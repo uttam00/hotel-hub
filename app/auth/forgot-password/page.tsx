@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Mail } from "lucide-react";
+import { authApi } from "@/services/api";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -20,23 +21,11 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Something went wrong");
-        return;
-      }
-
+      await authApi.forgotPassword(email);
       setSent(true);
       toast.success("Reset link sent! Check your email.");
-    } catch {
-      toast.error("Failed to send reset link. Please try again.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to send reset link. Please try again.");
     } finally {
       setLoading(false);
     }

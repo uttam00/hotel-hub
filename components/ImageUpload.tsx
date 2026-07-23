@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useState } from "react";
 import imageCompression from "browser-image-compression";
 import { toast } from "sonner";
+import { uploadApi } from "@/services/api";
 
 interface ImageUploadProps {
   hideLabel?: boolean;
@@ -44,14 +45,12 @@ export default function ImageUpload({
 
   const uploadImage = async (file: File): Promise<string | null> => {
     const compressed = await compressImage(file);
-    const formData = new FormData();
-    formData.append("file", compressed);
-    formData.append("folderName", folder);
-
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.url as string;
+    try {
+      const data = await uploadApi.uploadImage(compressed, folder);
+      return data.url;
+    } catch {
+      return null;
+    }
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

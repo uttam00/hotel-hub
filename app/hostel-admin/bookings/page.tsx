@@ -18,14 +18,15 @@ import {
 } from "@/components/ui/table";
 import { TableRows } from "@/components/ui/table-state";
 import { PageHeader } from "@/components/layout/page-header";
-import { bookingApi } from "@/services/api";
+import { bookingApi, roomApi } from "@/services/api";
+import type { HostelRoom } from "@/services/api/room";
 import { useMyHostel } from "@/hooks/use-my-hostel";
 import { BookingDetails } from "@/types";
 
 export default function HostelAdminBookingsPage() {
   const { hostel } = useMyHostel();
   const [bookings, setBookings] = useState<BookingDetails[]>([]);
-  const [rooms, setRooms] = useState<{ id: string; roomNumber: string; roomType: string; isAvailable: boolean }[]>([]);
+  const [rooms, setRooms] = useState<HostelRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [transferTarget, setTransferTarget] = useState<BookingDetails | null>(null);
   const [renewTarget, setRenewTarget] = useState<BookingDetails | null>(null);
@@ -49,8 +50,8 @@ export default function HostelAdminBookingsPage() {
 
   useEffect(() => {
     if (!hostel) return;
-    fetch(`/api/hostels/${hostel.id}/rooms`)
-      .then((res) => res.json())
+    roomApi
+      .getByHostel(hostel.id)
       .then(setRooms)
       .catch(() => setRooms([]));
   }, [hostel]);
@@ -59,15 +60,7 @@ export default function HostelAdminBookingsPage() {
     if (!transferTarget || !selectedRoomId) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/bookings/${transferTarget.id}/transfer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newRoomId: selectedRoomId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Transfer failed");
-      }
+      await bookingApi.transfer(transferTarget.id, selectedRoomId);
       toast.success("Room transferred");
       setTransferTarget(null);
       setSelectedRoomId("");

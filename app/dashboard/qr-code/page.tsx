@@ -6,14 +6,15 @@ import { ArrowLeft, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { qrApi } from "@/services/api";
 
 export default function QrCodePage() {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard/qr-code")
-      .then((res) => res.json())
+    qrApi
+      .getMyCode()
       .then((data) => setDataUrl(data.dataUrl))
       .catch(() => setDataUrl(null))
       .finally(() => setLoading(false));

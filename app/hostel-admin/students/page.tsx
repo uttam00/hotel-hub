@@ -11,20 +11,13 @@ import { TableRows } from "@/components/ui/table-state";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
 import { getBookingStatusColor } from "@/lib/status-colors";
-
-type StudentBooking = {
-  id: string;
-  status: string;
-  checkIn: string;
-  checkOut: string;
-  user: { id: string; name: string | null; email: string | null; phoneNumber: string | null };
-  room: { id: string; roomNumber: string; roomType: string };
-};
+import { studentApi } from "@/services/api";
 
 export default function StudentsPage() {
   const { hostel } = useMyHostel();
-  const { data: students, loading } = useFetch<StudentBooking[]>(
-    hostel ? `/api/hostel-admin/students?hostelId=${hostel.id}` : null
+  const { data: students, loading } = useFetch(
+    hostel ? () => studentApi.getAll(hostel.id) : null,
+    [hostel]
   );
 
   return (

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { wishlistApi } from "@/services/api";
 
 interface WishlistButtonProps {
   hostelId: string;
@@ -27,15 +28,7 @@ export function WishlistButton({
 
     setLoading(true);
     try {
-      const res = await fetch("/api/wishlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hostelId }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      const data = await res.json();
+      const data = await wishlistApi.toggle(hostelId);
       setWishlisted(data.action === "added");
       toast.success(
         data.action === "added" ? "Added to wishlist" : "Removed from wishlist"

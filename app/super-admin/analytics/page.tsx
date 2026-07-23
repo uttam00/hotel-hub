@@ -2,11 +2,12 @@
 
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueAnalytics } from "@/components/analytics/revenue-analytics";
+import { analyticsApi } from "@/services/api";
 
 export default function PlatformAnalyticsPage() {
   return (
     <RevenueAnalytics
-      fetchUrl="/api/super-admin/analytics"
+      fetcher={() => analyticsApi.getPlatformAnalytics()}
       title="Platform Analytics"
       description="How HostelHub is performing across every hostel"
       gridClassName="md:grid-cols-4"

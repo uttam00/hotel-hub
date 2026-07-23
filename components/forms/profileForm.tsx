@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { updateProfileSchema } from "@/lib/validation_schema";
-import { userApi } from "@/services/api";
+import { uploadApi, userApi } from "@/services/api";
 import { X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -91,20 +91,7 @@ export default function ProfileForm() {
       // Upload image to Cloudinary if there's a new image
       let uploadedImage = formData.image;
       if (selectedImage) {
-        const uploadFormData = new FormData();
-        uploadFormData.append("file", selectedImage);
-        uploadFormData.append("folder", "profile");
-
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadFormData,
-        });
-
-        if (!res.ok) {
-          throw new Error("Image upload failed");
-        }
-
-        const data = await res.json();
+        const data = await uploadApi.uploadImage(selectedImage, "profile");
         uploadedImage = data.url;
       }
 

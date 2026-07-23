@@ -20,21 +20,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { UserPlus } from "lucide-react";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
-
-type Visitor = {
-  id: string;
-  name: string;
-  phone: string;
-  purpose: string;
-  checkInAt: string;
-  checkOutAt: string | null;
-  visitingStudent: { name: string | null; email: string | null };
-};
+import { visitorApi } from "@/services/api";
 
 export default function VisitorsPage() {
   const { hostel, loading: hostelLoading } = useMyHostel();
-  const { data: visitors, loading, refetch: fetchVisitors } = useFetch<Visitor[]>(
-    hostel ? `/api/hostel-admin/visitors?hostelId=${hostel.id}` : null
+  const { data: visitors, loading, refetch: fetchVisitors } = useFetch(
+    hostel ? () => visitorApi.getAll(hostel.id) : null,
+    [hostel]
   );
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,15 +36,7 @@ export default function VisitorsPage() {
     if (!hostel) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/hostel-admin/visitors", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, hostelId: hostel.id }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to log visitor");
-      }
+      await visitorApi.log({ ...form, hostelId: hostel.id });
       toast.success("Visitor logged");
       setOpen(false);
       setForm({ name: "", phone: "", purpose: "", visitingStudentId: "" });
@@ -66,16 +50,11 @@ export default function VisitorsPage() {
 
   const handleCheckOut = async (id: string) => {
     try {
-      const res = await fetch(`/api/hostel-admin/visitors/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ checkOut: true }),
-      });
-      if (!res.ok) throw new Error();
+      await visitorApi.checkOut(id);
       toast.success("Visitor checked out");
       fetchVisitors();
-    } catch {
-      toast.error("Failed to check out visitor");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to check out visitor");
     }
   };
 

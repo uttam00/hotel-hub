@@ -22,6 +22,7 @@ import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { setUserCookie } from "@/lib/cookies";
 import Link from "next/link";
 import { loginSchema } from "@/lib/validation_schema";
+import { authApi } from "@/services/api";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -63,8 +64,7 @@ export function LoginForm() {
       }
 
       // Fetch user data after successful login
-      const response = await fetch("/api/auth/user");
-      const userData = await response.json();
+      const userData = await authApi.getCurrentUser();
 
       if (userData) {
         // Store user information in cookies

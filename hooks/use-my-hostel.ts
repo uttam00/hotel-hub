@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
+import { hostelAdminApi } from "@/services/api";
 
 export function useMyHostel() {
   const [hostel, setHostel] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/hostel-admin/me")
-      .then((res) => (res.ok ? res.json() : null))
+    hostelAdminApi
+      .getMyHostel()
       .then(setHostel)
+      .catch(() => setHostel(null))
       .finally(() => setLoading(false));
   }, []);
 

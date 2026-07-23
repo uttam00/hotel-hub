@@ -20,16 +20,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Plus } from "lucide-react";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
+import { expenseApi } from "@/services/api";
 
 const CATEGORIES = ["UTILITIES", "SALARY", "MAINTENANCE", "SUPPLIES", "OTHER"];
 
-type Expense = { id: string; category: string; amount: number; description: string | null; date: string };
-type ExpensesResponse = { expenses: Expense[]; summary: { category: string; total: number }[] };
-
 export default function ExpensesPage() {
   const { hostel } = useMyHostel();
-  const { data, loading, refetch: fetchExpenses } = useFetch<ExpensesResponse>(
-    hostel ? `/api/hostel-admin/expenses?hostelId=${hostel.id}` : null
+  const { data, loading, refetch: fetchExpenses } = useFetch(
+    hostel ? () => expenseApi.getAll(hostel.id) : null,
+    [hostel]
   );
   const expenses = data?.expenses ?? [];
   const summary = data?.summary ?? [];
@@ -46,18 +45,13 @@ export default function ExpensesPage() {
     if (!hostel || !form.amount) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/hostel-admin/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, hostelId: hostel.id, amount: Number(form.amount) }),
-      });
-      if (!res.ok) throw new Error();
+      await expenseApi.create({ ...form, hostelId: hostel.id, amount: Number(form.amount) });
       toast.success("Expense recorded");
       setOpen(false);
       setForm({ category: "OTHER", amount: "", description: "", date: new Date().toISOString().slice(0, 10) });
       fetchExpenses();
-    } catch {
-      toast.error("Failed to record expense");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to record expense");
     } finally {
       setSubmitting(false);
     }

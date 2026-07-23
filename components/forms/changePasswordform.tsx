@@ -8,6 +8,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { changePasswordSchema } from "@/lib/validation_schema";
+import { userApi } from "@/services/api";
 
 export default function ChangePasswordForm() {
   const [passwordData, setPasswordData] = useState({
@@ -30,13 +31,7 @@ export default function ChangePasswordForm() {
     try {
       const validated = changePasswordSchema.parse(passwordData);
 
-      const res = await fetch("/api/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validated),
-      });
-
-      if (!res.ok) throw new Error("Failed to change password");
+      await userApi.changePassword(validated);
 
       toast.success("Password changed");
       setPasswordData({

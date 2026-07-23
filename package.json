@@ -48,6 +48,7 @@
     "@types/google.maps": "^3.58.1",
     "@types/js-cookie": "^3.0.6",
     "autoprefixer": "^10.4.20",
+    "axios": "^1.18.1",
     "bcryptjs": "latest",
     "browser-image-compression": "^2.0.2",
     "child_process": "latest",

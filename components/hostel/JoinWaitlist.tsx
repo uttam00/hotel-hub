@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ListPlus } from "lucide-react";
+import { waitlistApi } from "@/services/api";
 
 const ROOM_TYPES = ["SINGLE", "DOUBLE", "TRIPLE", "DORMITORY"];
 
@@ -29,15 +30,7 @@ export function JoinWaitlist({ hostelId }: { hostelId: string }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/hostels/${hostelId}/waitlist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomType }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to join waitlist");
-      }
+      await waitlistApi.join(hostelId, roomType);
       toast.success("You're on the waitlist — we'll notify you when a room opens up.");
       setOpen(false);
     } catch (error) {

@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
-
-type Contact = { id: string; name: string; phone: string; relation: string; isPrimary: boolean };
+import { userApi } from "@/services/api";
+import type { EmergencyContact } from "@/services/api/user";
 
 export default function EmergencyContactsForm() {
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", phone: "", relation: "", isPrimary: false });
   const [submitting, setSubmitting] = useState(false);
@@ -21,8 +21,7 @@ export default function EmergencyContactsForm() {
   const fetchContacts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/profile/emergency-contacts");
-      if (res.ok) setContacts(await res.json());
+      setContacts(await userApi.getEmergencyContacts());
     } finally {
       setLoading(false);
     }
@@ -39,17 +38,12 @@ export default function EmergencyContactsForm() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/profile/emergency-contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error();
+      await userApi.addEmergencyContact(form);
       toast.success("Emergency contact added");
       setForm({ name: "", phone: "", relation: "", isPrimary: false });
       fetchContacts();
-    } catch {
-      toast.error("Failed to add contact");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to add contact");
     } finally {
       setSubmitting(false);
     }
@@ -57,11 +51,10 @@ export default function EmergencyContactsForm() {
 
   const handleRemove = async (id: string) => {
     try {
-      const res = await fetch(`/api/profile/emergency-contacts/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      await userApi.removeEmergencyContact(id);
       fetchContacts();
-    } catch {
-      toast.error("Failed to remove contact");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to remove contact");
     }
   };
 

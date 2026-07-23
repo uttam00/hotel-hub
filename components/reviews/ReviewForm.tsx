@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { reviewApi } from "@/services/api";
 
 interface ReviewFormProps {
   hostelId: string;
@@ -43,16 +44,7 @@ export function ReviewForm({ hostelId, onReviewAdded }: ReviewFormProps) {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/hostels/${hostelId}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, comment: comment || undefined }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to submit review");
-      }
+      await reviewApi.create(hostelId, { rating, comment: comment || undefined });
 
       toast.success("Review submitted!");
       setOpen(false);

@@ -1,0 +1,23 @@
+export { apiClient, ApiError } from "./client";
+
+export { authApi } from "./auth";
+export { userApi } from "./user";
+export { hostelApi } from "./hostel";
+export { roomApi } from "./room";
+export { bookingApi } from "./booking";
+export { paymentApi } from "./payment";
+export { subscriptionApi } from "./subscription";
+export { notificationApi } from "./notification";
+export { adminApi } from "./admin";
+export { analyticsApi } from "./analytics";
+export { studentApi } from "./student";
+export { visitorApi } from "./visitor";
+export { expenseApi } from "./expense";
+export { noticeApi } from "./notice";
+export { waitlistApi } from "./waitlist";
+export { attendanceApi } from "./attendance";
+export { hostelAdminApi } from "./hostelAdmin";
+export { uploadApi } from "./upload";
+export { wishlistApi } from "./wishlist";
+export { reviewApi } from "./review";
+export { qrApi } from "./qr";

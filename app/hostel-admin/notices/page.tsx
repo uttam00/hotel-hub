@@ -17,13 +17,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
-
-type Notice = { id: string; title: string; body: string; pinned: boolean; createdAt: string };
+import { noticeApi } from "@/services/api";
 
 export default function NoticesPage() {
   const { hostel } = useMyHostel();
-  const { data: notices, loading, refetch: fetchNotices } = useFetch<Notice[]>(
-    hostel ? `/api/hostels/${hostel.id}/notices` : null
+  const { data: notices, loading, refetch: fetchNotices } = useFetch(
+    hostel ? () => noticeApi.getAll(hostel.id) : null,
+    [hostel]
   );
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -33,15 +33,7 @@ export default function NoticesPage() {
     if (!hostel) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/hostels/${hostel.id}/notices`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || data.error || "Failed to post notice");
-      }
+      await noticeApi.create(hostel.id, form);
       toast.success("Notice posted");
       setOpen(false);
       setForm({ title: "", body: "", pinned: false });
@@ -56,12 +48,11 @@ export default function NoticesPage() {
   const handleDelete = async (id: string) => {
     if (!hostel) return;
     try {
-      const res = await fetch(`/api/hostels/${hostel.id}/notices/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      await noticeApi.remove(hostel.id, id);
       toast.success("Notice deleted");
       fetchNotices();
-    } catch {
-      toast.error("Failed to delete notice");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete notice");
     }
   };
 

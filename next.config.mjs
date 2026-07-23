@@ -6,6 +6,15 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Dev-only: keep compiled routes warm instead of evicting them after the
+  // default 25s of inactivity. Without this, pasting a URL to a route you
+  // haven't hit in the last ~25s forces a full recompile on that request,
+  // which shows as a stuck "Loading..." until it finishes — reloading a
+  // moment later just happens to land after the compile completes.
+  onDemandEntries: {
+    maxInactiveAge: 60 * 60 * 1000,
+    pagesBufferLength: 20,
+  },
   images: {
     unoptimized: true,
     domains: ["maps.googleapis.com", "res.cloudinary.com"],

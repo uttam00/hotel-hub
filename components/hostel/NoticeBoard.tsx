@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { Megaphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-type Notice = { id: string; title: string; body: string; pinned: boolean; createdAt: string };
+import { noticeApi } from "@/services/api";
+import type { Notice } from "@/services/api/notice";
 
 export function NoticeBoard({ hostelId }: { hostelId: string }) {
   const [notices, setNotices] = useState<Notice[]>([]);
 
   useEffect(() => {
-    fetch(`/api/hostels/${hostelId}/notices`)
-      .then((res) => res.json())
+    noticeApi
+      .getAll(hostelId)
       .then(setNotices)
       .catch(() => setNotices([]));
   }, [hostelId]);

@@ -1,30 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
 
-// Generic list/resource fetcher. Pass `null` for `url` to skip fetching
-// (e.g. while a dependency like the current hostel is still loading).
-export function useFetch<T>(url: string | null) {
+// Generic list/resource loader around any service-layer call. Pass `null`
+// for `fetcher` to skip loading (e.g. while a dependency like the current
+// hostel is still loading). `deps` re-runs the fetcher when they change,
+// same as a useEffect dependency array.
+export function useFetch<T>(fetcher: (() => Promise<T>) | null, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (!url) return;
+  const load = useCallback(async () => {
+    if (!fetcher) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Request failed");
-      setData(await res.json());
+      setData(await fetcher());
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Request failed"));
     } finally {
       setLoading(false);
     }
-  }, [url]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    load();
+  }, [load]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: load };
 }

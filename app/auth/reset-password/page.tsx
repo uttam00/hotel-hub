@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { authApi } from "@/services/api";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -56,24 +57,12 @@ function ResetPasswordForm() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Failed to reset password");
-        return;
-      }
-
+      await authApi.resetPassword({ token, password });
       setSuccess(true);
       toast.success("Password reset successfully!");
       setTimeout(() => router.push("/auth/login"), 3000);
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

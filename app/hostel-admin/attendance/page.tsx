@@ -12,10 +12,10 @@ import {
 import { TableRows } from "@/components/ui/table-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { useMyHostel } from "@/hooks/use-my-hostel";
-import { bookingApi } from "@/services/api";
+import { attendanceApi, bookingApi } from "@/services/api";
+import type { AttendanceStatus } from "@/services/api/attendance";
 
 type StudentRow = { id: string; name: string | null; email: string | null };
-type AttendanceStatus = "PRESENT" | "ABSENT" | "LEAVE";
 
 export default function AttendancePage() {
   const { hostel } = useMyHostel();
@@ -31,7 +31,7 @@ export default function AttendancePage() {
     try {
       const [bookingsRes, attendanceRes] = await Promise.all([
         bookingApi.getAll({ limit: 100 }),
-        fetch(`/api/hostel-admin/attendance?hostelId=${hostel.id}`).then((r) => r.json()),
+        attendanceApi.getAll(hostel.id),
       ]);
 
       const uniqueStudents = new Map<string, StudentRow>();
@@ -57,15 +57,10 @@ export default function AttendancePage() {
   const markAttendance = async (studentId: string, status: AttendanceStatus) => {
     if (!hostel) return;
     try {
-      const res = await fetch("/api/hostel-admin/attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId, hostelId: hostel.id, date: new Date().toISOString(), status }),
-      });
-      if (!res.ok) throw new Error();
+      await attendanceApi.mark({ studentId, hostelId: hostel.id, date: new Date().toISOString(), status });
       setAttendance((prev) => ({ ...prev, [studentId]: status }));
-    } catch {
-      toast.error("Failed to mark attendance");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to mark attendance");
     }
   };
 
@@ -83,13 +78,7 @@ export default function AttendancePage() {
           { fps: 10, qrbox: 250 },
           async (decodedText: string) => {
             try {
-              const res = await fetch("/api/hostel-admin/attendance/scan", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: decodedText, hostelId: hostel.id }),
-              });
-              const data = await res.json();
-              if (!res.ok) throw new Error(data.error);
+              const data = await attendanceApi.scan({ token: decodedText, hostelId: hostel.id });
               setScanResult(`Marked present: ${data.student.name}`);
               toast.success(`${data.student.name} marked present`);
               fetchData();

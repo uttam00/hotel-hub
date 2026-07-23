@@ -9,19 +9,13 @@ import { TableRows } from "@/components/ui/table-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
-
-type WaitlistEntry = {
-  id: string;
-  roomType: string;
-  status: string;
-  requestedAt: string;
-  student: { name: string | null; email: string | null };
-};
+import { waitlistApi } from "@/services/api";
 
 export default function WaitlistPage() {
   const { hostel } = useMyHostel();
-  const { data: entries, loading } = useFetch<WaitlistEntry[]>(
-    hostel ? `/api/hostels/${hostel.id}/waitlist` : null
+  const { data: entries, loading } = useFetch(
+    hostel ? () => waitlistApi.getAll(hostel.id) : null,
+    [hostel]
   );
 
   return (

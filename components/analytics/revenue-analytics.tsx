@@ -16,7 +16,7 @@ export type Analytics = {
 };
 
 interface RevenueAnalyticsProps {
-  fetchUrl: string | null;
+  fetcher: (() => Promise<Analytics>) | null;
   title: string;
   description: string;
   gridClassName: string;
@@ -29,7 +29,7 @@ interface RevenueAnalyticsProps {
 }
 
 export function RevenueAnalytics({
-  fetchUrl,
+  fetcher,
   title,
   description,
   gridClassName,
@@ -40,7 +40,7 @@ export function RevenueAnalytics({
   extraCards,
   loadingMessage,
 }: RevenueAnalyticsProps) {
-  const { data } = useFetch<Analytics>(fetchUrl);
+  const { data } = useFetch(fetcher);
 
   if (!data) return <LoadingSpinner fullPage message={loadingMessage} />;
 

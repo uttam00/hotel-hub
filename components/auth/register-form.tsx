@@ -28,6 +28,7 @@ import {
 import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { registerUserSchemaWithConfirm } from "@/lib/validation_schema";
 import { useAuth } from "@/hooks/use-auth";
+import { authApi } from "@/services/api";
 
 const registerSchema = registerUserSchemaWithConfirm.refine(
   (data) => data.password === data.confirmPassword,
@@ -72,24 +73,12 @@ export function RegisterForm() {
       registerSchema.parse(formData);
 
       // Send registration request
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role,
-        }),
+      const data = await authApi.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Registration failed");
-      }
 
       if (data) {
         updateUser(data);
