@@ -17,6 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { bookingApi, paymentApi, notificationApi } from "@/services/api";
 import { BookingDetails, Payment, Notification } from "@/types";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { BrandSpinner } from "@/components/ui/brand-spinner";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -27,6 +30,19 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<BookingDetails[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const handlePayNow = async (payment: Payment) => {
+    setPayingId(payment.id);
+    try {
+      const { url } = await paymentApi.resumeCheckout(payment.id);
+      window.location.href = url;
+    } catch (error) {
+      console.error("Error starting payment:", error);
+      toast.error("Failed to start payment");
+      setPayingId(null);
+    }
+  };
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -48,17 +64,25 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [bookingsResponse, paymentsResponse, notificationsResponse] =
-          await Promise.all([
+        const [bookingsResult, paymentsResult, notificationsResult] =
+          await Promise.allSettled([
             bookingApi.getAll({ status: "ACTIVE" }),
             paymentApi.getAll(),
             notificationApi.getAll(),
           ]);
-        setBookings(bookingsResponse.data);
-        setPayments(paymentsResponse);
-        setNotifications(notificationsResponse);
+
+        if (bookingsResult.status === "fulfilled") {
+          setBookings(bookingsResult.value.data || []);
+        }
+        if (paymentsResult.status === "fulfilled") {
+          setPayments(paymentsResult.value || []);
+        }
+        if (notificationsResult.status === "fulfilled") {
+          setNotifications(notificationsResult.value || []);
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        toast.error("Failed to load some dashboard data");
       } finally {
         setLoading(false);
       }
@@ -87,8 +111,8 @@ export default function DashboardPage() {
     (notification) => !notification.read
   );
 
-  if (status === "loading") {
-    return <div>Loading...</div>;
+  if (status === "loading" || loading) {
+    return <LoadingSpinner fullPage message="Loading your dashboard..." />;
   }
 
   if (!session?.user) {
@@ -113,6 +137,20 @@ export default function DashboardPage() {
           <TabsTrigger value="bookings">Current Bookings</TabsTrigger>
           <TabsTrigger value="payments">Recent Payments</TabsTrigger>
         </TabsList>
+        <div className="flex gap-2 mt-2">
+          <Link href="/dashboard/bookings">
+            <Button variant="outline" size="sm" className="gap-1">
+              <Calendar className="h-3 w-3" />
+              All Bookings
+            </Button>
+          </Link>
+          <Link href="/dashboard/payments">
+            <Button variant="outline" size="sm" className="gap-1">
+              <CreditCard className="h-3 w-3" />
+              All Payments
+            </Button>
+          </Link>
+        </div>
         <TabsContent value="overview" className="space-y-6 pt-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -406,12 +444,7 @@ export default function DashboardPage() {
                   ) : payments.length > 0 ? (
                     <div className="space-y-4">
                       {payments
-                        .filter(
-                          (payment) =>
-                            payment.dueDate &&
-                            new Date(payment.dueDate as string) > new Date() &&
-                            !payment.paid
-                        )
+                        .filter((payment) => payment.status === "PENDING")
                         .map((payment) => (
                           <div
                             key={payment.id}
@@ -441,7 +474,20 @@ export default function DashboardPage() {
                                 <p className="text-sm font-medium">
                                   ${payment.amount.toFixed(2)}
                                 </p>
-                                <Button size="sm">Pay Now</Button>
+                                <Button
+                                  size="sm"
+                                  disabled={payingId === payment.id}
+                                  onClick={() => handlePayNow(payment)}
+                                >
+                                  {payingId === payment.id ? (
+                                    <span className="flex items-center gap-2">
+                                      <BrandSpinner size="sm" />
+                                      Redirecting...
+                                    </span>
+                                  ) : (
+                                    "Pay Now"
+                                  )}
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -467,7 +513,7 @@ export default function DashboardPage() {
                   ) : payments.length > 0 ? (
                     <div className="space-y-4">
                       {payments
-                        .filter((payment) => payment.paid)
+                        .filter((payment) => payment.status === "COMPLETED")
                         .map((payment) => (
                           <div
                             key={payment.id}

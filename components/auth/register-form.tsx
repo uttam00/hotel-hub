@@ -5,6 +5,7 @@ import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { registerUserSchemaWithConfirm } from "@/lib/validation_schema";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -42,7 +43,6 @@ export function RegisterForm() {
   const { updateUser } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<RegisterFormValues>({
     name: "",
     email: "",
@@ -54,7 +54,6 @@ export function RegisterForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setError(null);
   };
 
   const handleRoleChange = (value: string) => {
@@ -62,13 +61,11 @@ export function RegisterForm() {
       ...prev,
       role: value as "STUDENT" | "HOSTEL_ADMIN",
     }));
-    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     try {
       // Validate form data
@@ -106,9 +103,7 @@ export function RegisterForm() {
       });
 
       if (result?.error) {
-        setError(
-          "Registration successful, but login failed. Please try logging in."
-        );
+        toast.error("Registration successful, but login failed. Please try logging in.");
         setIsLoading(false);
         router.push("/auth/login");
         return;
@@ -121,11 +116,11 @@ export function RegisterForm() {
         const fieldErrors = error.flatten().fieldErrors;
         const errorMessage =
           Object.values(fieldErrors)[0]?.[0] || "Invalid input";
-        setError(errorMessage);
+        toast.error(errorMessage);
       } else if (error instanceof Error) {
-        setError(error.message);
+        toast.error(error.message);
       } else {
-        setError("Something went wrong. Please try again.");
+        toast.error("Something went wrong. Please try again.");
       }
       setIsLoading(false);
     }
@@ -143,11 +138,6 @@ export function RegisterForm() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-2 rounded-md">
-              {error}
-            </div>
-          )}
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input
@@ -212,7 +202,7 @@ export function RegisterForm() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <BrandSpinner size="sm" className="mr-2" />
                 Creating account...
               </>
             ) : (

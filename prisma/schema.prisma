@@ -42,42 +42,58 @@ model VerificationToken {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  phoneNumber   String?
-  emailVerified DateTime?
-  password      String?
-  image         String?     
-  role          Role      @default(STUDENT)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  bookings      Booking[]
-  reviews       Review[]
-  sessions      Session[]
-  hostels       Hostel[]  @relation("HostelAdmin")
+  id                   String             @id @default(cuid())
+  name                 String?
+  email                String?            @unique
+  phoneNumber          String?
+  emailVerified        DateTime?
+  password             String?
+  image                String?
+  role                 Role               @default(STUDENT)
+  isVerified           Boolean            @default(false)
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  accounts             Account[]
+  bookings             Booking[]
+  reviews              Review[]
+  sessions             Session[]
+  hostels              Hostel[]           @relation("HostelAdmin")
+  notifications        Notification[]
+  wishlists            Wishlist[]
+  visitorLogs          Visitor[]
+  attendance           Attendance[]
+  waitlistEntries      WaitlistEntry[]
+  emergencyContacts    EmergencyContact[]
 }
 
 model Hostel {
-  id          String       @id @default(cuid())
-  name        String
-  description String
-  address     String
-  city        String
-  state       String
-  zipCode     String
-  country     String
-  latitude    Float?
-  longitude   Float?
-  amenities   String[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  status      HostelStatus 
-  images      String[]
-  reviews     Review[]
-  rooms       Room[]
-  admins      User[]       @relation("HostelAdmin")
+  id           String          @id @default(cuid())
+  name         String
+  description  String
+  address      String
+  city         String
+  state        String
+  zipCode      String
+  country      String
+  latitude     Float?
+  longitude    Float?
+  amenities    String[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  status       HostelStatus    @default(PENDING_VERIFICATION)
+  images       String[]
+  reviews      Review[]
+  rooms        Room[]
+  admins       User[]          @relation("HostelAdmin")
+  subscription Subscription?
+  wishlists    Wishlist[]
+  visitors     Visitor[]
+  attendance   Attendance[]
+  waitlist     WaitlistEntry[]
+  notices      Notice[]
+  expenses     Expense[]
 }
 
 model Room {
@@ -109,17 +125,26 @@ model Booking {
   room       Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments   Payment[]
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([status])
 }
 
 model Payment {
-  id        String        @id @default(cuid())
-  amount    Float
-  status    PaymentStatus @default(PENDING)
-  method    String?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  bookingId String
-  booking   Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id                    String        @id @default(cuid())
+  amount                Float
+  status                PaymentStatus @default(PENDING)
+  method                String?
+  description           String?
+  dueDate               DateTime?
+  stripePaymentIntentId String?       @unique
+  refundedAmount        Float?
+  refundReason          String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  bookingId             String
+  booking               Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }
 
 model Review {
@@ -132,6 +157,153 @@ model Review {
   hostelId  String
   hostel    Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  plan             SubscriptionPlan
+  status           SubscriptionStatus @default(ACTIVE)
+  startDate        DateTime           @default(now())
+  endDate          DateTime
+  stripeCustomerId String?
+  stripeSubId      String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  hostelId         String             @unique
+  hostel           Hostel             @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([endDate])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType @default(GENERAL)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  hostelId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hostel    Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hostelId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorRole  Role
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
+
+model Visitor {
+  id                 String             @id @default(cuid())
+  hostelId           String
+  visitingStudentId  String
+  name               String
+  phone              String
+  purpose            String
+  idProofUrl         String?
+  verificationStatus VerificationStatus @default(PENDING)
+  checkInAt          DateTime           @default(now())
+  checkOutAt         DateTime?
+  loggedBy           String
+  hostel             Hostel             @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  visitingStudent    User               @relation(fields: [visitingStudentId], references: [id], onDelete: Cascade)
+
+  @@index([hostelId, checkInAt])
+  @@index([visitingStudentId])
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  hostelId  String
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  note      String?
+  markedBy  String
+  createdAt DateTime         @default(now())
+  student   User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  hostel    Hostel           @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([hostelId, date])
+}
+
+model WaitlistEntry {
+  id          String         @id @default(cuid())
+  hostelId    String
+  studentId   String
+  roomType    RoomType
+  requestedAt DateTime       @default(now())
+  notifiedAt  DateTime?
+  status      WaitlistStatus @default(WAITING)
+  hostel      Hostel         @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  student     User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([hostelId, roomType, status])
+}
+
+model Notice {
+  id        String    @id @default(cuid())
+  hostelId  String
+  title     String
+  body      String
+  pinned    Boolean   @default(false)
+  createdBy String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  hostel    Hostel    @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+
+  @@index([hostelId, createdAt])
+}
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  studentId String
+  name      String
+  phone     String
+  relation  String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  hostelId    String
+  category    ExpenseCategory
+  amount      Float
+  description String?
+  date        DateTime        @default(now())
+  receiptUrl  String?
+  recordedBy  String
+  hostel      Hostel          @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+
+  @@index([hostelId, date])
+  @@index([hostelId, category])
 }
 
 enum Role {
@@ -164,4 +336,51 @@ enum PaymentStatus {
 enum HostelStatus {
   ACTIVE
   INACTIVE
+  PENDING_VERIFICATION
+}
+
+enum SubscriptionPlan {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum NotificationType {
+  BOOKING
+  PAYMENT
+  SUBSCRIPTION
+  VERIFICATION
+  GENERAL
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  FULFILLED
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  UTILITIES
+  SALARY
+  MAINTENANCE
+  SUPPLIES
+  OTHER
 }

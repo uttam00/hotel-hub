@@ -45,7 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import {
   assignHostelSchema,
   createHostelAdminSchema,
@@ -61,7 +61,6 @@ import * as z from "zod";
 interface Admin extends HostelAdmin {}
 
 export default function AdminsPage() {
-  const { toast } = useToast();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [hostels, setHostels] = useState<Hostel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,11 +99,7 @@ export default function AdminsPage() {
       const response = await adminApi.getAll();
       setAdmins(response);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch admins",
-        variant: "destructive",
-      });
+      toast.error("Failed to fetch admins");
     } finally {
       setLoading(false);
     }
@@ -119,11 +114,7 @@ export default function AdminsPage() {
         )
       );
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch hostels",
-        variant: "destructive",
-      });
+      toast.error("Failed to fetch hostels");
     }
   };
 
@@ -136,20 +127,12 @@ export default function AdminsPage() {
     try {
       await adminApi.create(values);
 
-      toast({
-        title: "Success",
-        description: "Admin created successfully",
-      });
+      toast.success("Admin created successfully");
       setDialogOpen(false);
       form.reset();
       fetchAdmins();
     } catch (error: unknown) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
     }
   };
 
@@ -160,20 +143,12 @@ export default function AdminsPage() {
     try {
       await adminApi.assignHostel(selectedAdmin.id, values.hostelIds);
 
-      toast({
-        title: "Success",
-        description: "Hostels assigned to admin successfully",
-      });
+      toast.success("Hostels assigned to admin successfully");
       setAssignDialogOpen(false);
       assignForm.reset();
       fetchAdmins();
     } catch (error: unknown) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setAssignHostelLoading(false);
     }
@@ -183,20 +158,12 @@ export default function AdminsPage() {
     try {
       await adminApi.delete(adminId);
 
-      toast({
-        title: "Success",
-        description: "Admin deleted successfully",
-      });
+      toast.success("Admin deleted successfully");
       setDeleteDialogOpen(false);
       setAdminToDelete(null);
       fetchAdmins();
     } catch (error: unknown) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
     }
   };
 

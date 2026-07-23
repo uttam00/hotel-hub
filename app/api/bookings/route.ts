@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma, Status } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUser, authzErrorResponse } from "@/lib/authz";
 import { createBookingSchema } from "@/lib/validation_schema";
+import { calculateBookingPrice } from "@/lib/pricing";
+import { requireFullAccess } from "@/lib/subscription";
 
 // GET all bookings for the current user
 export async function GET(req: Request) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireUser();
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -102,6 +101,8 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
     console.error("Error fetching bookings:", error);
     return NextResponse.json(
       { error: "Failed to fetch bookings" },
@@ -110,39 +111,27 @@ export async function GET(req: Request) {
   }
 }
 
+function overlapClause(checkIn: Date, checkOut: Date): Prisma.BookingWhereInput {
+  return {
+    status: { in: [Status.PENDING, Status.CONFIRMED] },
+    OR: [
+      { AND: [{ checkIn: { lte: checkIn } }, { checkOut: { gt: checkIn } }] },
+      { AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gte: checkOut } }] },
+      { AND: [{ checkIn: { gte: checkIn } }, { checkOut: { lte: checkOut } }] },
+    ],
+  };
+}
+
 // POST create a new booking
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireUser();
 
     const body = await req.json();
+    // totalPrice is never accepted from the client — it's always recomputed
+    // server-side from the room's price so a request can't set its own price.
     const validatedData = createBookingSchema.parse(body);
-
-    // Check if room exists and is available
-    const room = await prisma.room.findUnique({
-      where: {
-        id: validatedData.roomId,
-      },
-    });
-
-    if (!room) {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
-    }
-
-    if (!room.isAvailable) {
-      return NextResponse.json(
-        { error: "Room is not available" },
-        { status: 400 }
-      );
-    }
-
-    // Check for date validity
-    const checkIn = validatedData.checkIn;
-    const checkOut = validatedData.checkOut;
+    const { roomId, checkIn, checkOut } = validatedData;
 
     if (checkIn >= checkOut) {
       return NextResponse.json(
@@ -158,63 +147,80 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check for overlapping bookings
-    const overlappingBookings = await prisma.booking.findMany({
-      where: {
-        roomId: validatedData.roomId,
-        status: {
-          in: ["PENDING", "CONFIRMED"],
-        },
-        OR: [
-          {
-            // New booking starts during an existing booking
-            AND: [{ checkIn: { lte: checkIn } }, { checkOut: { gt: checkIn } }],
-          },
-          {
-            // New booking ends during an existing booking
-            AND: [
-              { checkIn: { lt: checkOut } },
-              { checkOut: { gte: checkOut } },
-            ],
-          },
-          {
-            // New booking completely contains an existing booking
-            AND: [
-              { checkIn: { gte: checkIn } },
-              { checkOut: { lte: checkOut } },
-            ],
-          },
-        ],
-      },
-    });
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
 
-    if (overlappingBookings.length > 0) {
+    if (!room) {
+      return NextResponse.json({ error: "Room not found" }, { status: 404 });
+    }
+
+    if (!room.isAvailable) {
       return NextResponse.json(
-        { error: "Room is already booked for the selected dates" },
+        { error: "Room is not available" },
         { status: 400 }
       );
     }
 
-    // Create the booking
-    const booking = await prisma.booking.create({
-      data: {
-        checkIn,
-        checkOut,
-        totalPrice: validatedData.totalPrice,
-        status: "PENDING",
-        userId: user.id,
-        roomId: validatedData.roomId,
+    await requireFullAccess(room.hostelId);
+
+    const totalPrice = calculateBookingPrice(room.price, checkIn, checkOut);
+
+    // Overlap check + insert happen inside one serializable transaction so two
+    // concurrent requests for the same dates can't both pass the check and
+    // double-book the room (the previous check-then-act was a real race).
+    const booking = await prisma.$transaction(
+      async (tx) => {
+        const overlapping = await tx.booking.findFirst({
+          where: { roomId, ...overlapClause(checkIn, checkOut) },
+        });
+
+        if (overlapping) {
+          throw new RoomUnavailableError();
+        }
+
+        return tx.booking.create({
+          data: {
+            checkIn,
+            checkOut,
+            totalPrice,
+            status: "PENDING",
+            userId: user.id,
+            roomId,
+          },
+        });
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     return NextResponse.json(booking, { status: 201 });
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid input", details: error.flatten() },
         { status: 400 }
       );
     }
+
+    if (error instanceof RoomUnavailableError) {
+      return NextResponse.json(
+        { error: "Room is already booked for the selected dates" },
+        { status: 409 }
+      );
+    }
+
+    // Serializable transaction conflict — another request won the race.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return NextResponse.json(
+        { error: "This room was just booked by someone else. Please try different dates." },
+        { status: 409 }
+      );
+    }
+
     console.error("Error creating booking:", error);
     return NextResponse.json(
       { error: "Failed to create booking" },
@@ -222,3 +228,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
+class RoomUnavailableError extends Error {}

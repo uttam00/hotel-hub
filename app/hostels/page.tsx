@@ -22,8 +22,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hostelApi } from "@/services/api";
 import { Hostel } from "@/types";
-import { Filter, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Filter, Search, X } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 
 export default function HostelsPage() {
   const [hostels, setHostels] = useState<Hostel[]>([]);
@@ -34,57 +34,91 @@ export default function HostelsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [sortBy, setSortBy] = useState("recommended");
 
-  useEffect(() => {
-    const fetchHostels = async () => {
-      try {
-        setLoading(true);
-        const response = await hostelApi.getAll({
-          city: searchCity || undefined,
-          page: currentPage,
-          limit: 6,
-        });
-        setHostels(response.data);
-        setTotalPages(response.pagination.pages);
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching hostels:", err);
-        setError("Failed to load hostels. Please try again.");
-        setHostels([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Filter state
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
+  const amenitiesList = [
+    "Wi-Fi",
+    "AC",
+    "Laundry",
+    "Gym",
+    "Cafeteria",
+    "Study Room",
+    "Parking",
+    "Security",
+  ];
+
+  const fetchHostels = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Map sortBy to API sort param
+      let sort: string | undefined;
+      if (sortBy === "price-low") sort = "price_asc";
+      else if (sortBy === "price-high") sort = "price_desc";
+      else if (sortBy === "rating") sort = "rating";
+
+      const response = await hostelApi.getAll({
+        city: searchCity || undefined,
+        page: currentPage,
+        limit: 6,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        amenities:
+          selectedAmenities.length > 0
+            ? selectedAmenities.join(",")
+            : undefined,
+        sort,
+      });
+      setHostels(response.data);
+      setTotalPages(response.pagination.pages);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching hostels:", err);
+      setError("Failed to load hostels. Please try again.");
+      setHostels([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchCity, currentPage, sortBy, minPrice, maxPrice, selectedAmenities]);
+
+  useEffect(() => {
     fetchHostels();
-  }, [searchCity, currentPage]);
+  }, [fetchHostels]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1); // Reset to first page on new search
+    setCurrentPage(1);
   };
 
   const handleSort = (value: string) => {
     setSortBy(value);
-
-    // Sort the hostels based on the selected option
-    const sortedHostels = [...hostels];
-    switch (value) {
-      case "price-low":
-        sortedHostels.sort((a, b) => a.lowestPrice - b.lowestPrice);
-        break;
-      case "price-high":
-        sortedHostels.sort((a, b) => b.lowestPrice - a.lowestPrice);
-        break;
-      case "rating":
-        sortedHostels.sort((a, b) => b.averageRating - a.averageRating);
-        break;
-      // For "recommended", we'll keep the original order from the API
-      default:
-        break;
-    }
-
-    setHostels(sortedHostels);
+    setCurrentPage(1);
   };
+
+  const toggleAmenity = (amenity: string) => {
+    setSelectedAmenities((prev) =>
+      prev.includes(amenity)
+        ? prev.filter((a) => a !== amenity)
+        : [...prev, amenity]
+    );
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setMinPrice("");
+    setMaxPrice("");
+    setSelectedAmenities([]);
+    setSortBy("recommended");
+    setSearchCity("");
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters =
+    minPrice || maxPrice || selectedAmenities.length > 0;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -120,15 +154,44 @@ export default function HostelsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" className="w-full gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2 md:hidden"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
                     <Filter className="h-4 w-4" />
                     Filters
+                    {hasActiveFilters && (
+                      <span className="ml-1 bg-primary text-primary-foreground rounded-full h-5 w-5 text-xs flex items-center justify-center">
+                        {selectedAmenities.length +
+                          (minPrice ? 1 : 0) +
+                          (maxPrice ? 1 : 0)}
+                      </span>
+                    )}
                   </Button>
                 </div>
               </form>
               <Separator className="my-2" />
               <div className="grid gap-6 md:grid-cols-4">
-                <div className="hidden md:block space-y-4">
+                {/* Sidebar Filters */}
+                <div
+                  className={`space-y-4 ${
+                    showFilters ? "block" : "hidden md:block"
+                  }`}
+                >
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs gap-1"
+                      onClick={clearFilters}
+                    >
+                      <X className="h-3 w-3" />
+                      Clear all filters
+                    </Button>
+                  )}
+
                   <div>
                     <h3 className="font-medium mb-2">Price Range</h3>
                     <div className="grid grid-cols-2 gap-2">
@@ -136,7 +199,16 @@ export default function HostelsPage() {
                         <label htmlFor="min-price" className="text-sm">
                           Min
                         </label>
-                        <Input id="min-price" type="number" placeholder="$0" />
+                        <Input
+                          id="min-price"
+                          type="number"
+                          placeholder="$0"
+                          value={minPrice}
+                          onChange={(e) => {
+                            setMinPrice(e.target.value);
+                            setCurrentPage(1);
+                          }}
+                        />
                       </div>
                       <div className="space-y-1">
                         <label htmlFor="max-price" className="text-sm">
@@ -146,57 +218,33 @@ export default function HostelsPage() {
                           id="max-price"
                           type="number"
                           placeholder="$1000"
+                          value={maxPrice}
+                          onChange={(e) => {
+                            setMaxPrice(e.target.value);
+                            setCurrentPage(1);
+                          }}
                         />
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium mb-2">Room Type</h3>
-                    <div className="space-y-2">
-                      {[
-                        "Single",
-                        "Double Sharing",
-                        "Triple Sharing",
-                        "Dormitory",
-                      ].map((type) => (
-                        <div key={type} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id={type.toLowerCase().replace(" ", "-")}
-                            className="h-4 w-4 rounded border-gray-300"
-                          />
-                          <label
-                            htmlFor={type.toLowerCase().replace(" ", "-")}
-                            className="text-sm"
-                          >
-                            {type}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+
                   <div>
                     <h3 className="font-medium mb-2">Amenities</h3>
                     <div className="space-y-2">
-                      {[
-                        "Wi-Fi",
-                        "AC",
-                        "Laundry",
-                        "Gym",
-                        "Cafeteria",
-                        "Study Room",
-                      ].map((amenity) => (
+                      {amenitiesList.map((amenity) => (
                         <div
                           key={amenity}
                           className="flex items-center space-x-2"
                         >
                           <input
                             type="checkbox"
-                            id={amenity.toLowerCase().replace(" ", "-")}
+                            id={`amenity-${amenity}`}
                             className="h-4 w-4 rounded border-gray-300"
+                            checked={selectedAmenities.includes(amenity)}
+                            onChange={() => toggleAmenity(amenity)}
                           />
                           <label
-                            htmlFor={amenity.toLowerCase().replace(" ", "-")}
+                            htmlFor={`amenity-${amenity}`}
                             className="text-sm"
                           >
                             {amenity}
@@ -205,6 +253,7 @@ export default function HostelsPage() {
                       ))}
                     </div>
                   </div>
+
                   <div>
                     <h3 className="font-medium mb-2">Sort By</h3>
                     <Select value={sortBy} onValueChange={handleSort}>
@@ -224,6 +273,8 @@ export default function HostelsPage() {
                     </Select>
                   </div>
                 </div>
+
+                {/* Results */}
                 <div className="md:col-span-3 space-y-6">
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
@@ -281,6 +332,21 @@ export default function HostelsPage() {
                           </CardFooter>
                         </Card>
                       ))}
+                    </div>
+                  ) : hostels.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-lg text-muted-foreground">
+                        No hostels found matching your criteria.
+                      </p>
+                      {hasActiveFilters && (
+                        <Button
+                          variant="outline"
+                          className="mt-4"
+                          onClick={clearFilters}
+                        >
+                          Clear filters
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <>

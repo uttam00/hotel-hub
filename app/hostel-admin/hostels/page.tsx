@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import HostelManagement from "@/components/common-in-admin/HostelManagement";
 import { Hostel } from "@/types";
 import { useAuth } from "@/hooks/use-auth";
@@ -9,7 +9,6 @@ import { hostelApi } from "@/services/api";
 
 export default function HostelsPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [hostels, setHostels] = useState<Hostel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,11 +18,7 @@ export default function HostelsPage() {
       const response = await hostelApi.getAll();
       setHostels(response.data);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch hostels",
-        variant: "destructive",
-      });
+      toast.error("Failed to fetch hostels");
     } finally {
       setLoading(false);
     }

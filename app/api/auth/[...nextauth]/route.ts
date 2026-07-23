@@ -17,7 +17,7 @@ declare module "next-auth" {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -31,17 +31,25 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error("Please enter your email and password");
         }
 
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email,
           },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            password: true,
+            role: true,
+            image: true,
+          },
         });
 
         if (!user || !user.password) {
-          return null;
+          throw new Error("No account found with this email");
         }
 
         const isPasswordValid = await compare(
@@ -50,7 +58,7 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
-          return null;
+          throw new Error("Invalid password");
         }
 
         return {
@@ -58,7 +66,8 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
-        };
+          image: user.image,
+        } as any;
       },
     }),
   ],

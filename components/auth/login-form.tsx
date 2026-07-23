@@ -5,6 +5,7 @@ import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +18,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { setUserCookie } from "@/lib/cookies";
+import Link from "next/link";
 import { loginSchema } from "@/lib/validation_schema";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -26,7 +28,6 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<LoginFormValues>({
     email: "",
     password: "",
@@ -35,13 +36,11 @@ export function LoginForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     try {
       // Validate form data
@@ -54,7 +53,11 @@ export function LoginForm() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        // NextAuth wraps the thrown error message in result.error
+        const errorMsg = result.error === "CredentialsSignin"
+          ? "Invalid email or password"
+          : result.error;
+        toast.error(errorMsg);
         setIsLoading(false);
         return;
       }
@@ -89,9 +92,9 @@ export function LoginForm() {
         const fieldErrors = error.flatten().fieldErrors;
         const errorMessage =
           Object.values(fieldErrors)[0]?.[0] || "Invalid input";
-        setError(errorMessage);
+        toast.error(errorMessage);
       } else {
-        setError("Something went wrong. Please try again.");
+        toast.error("Something went wrong. Please try again.");
       }
       setIsLoading(false);
     }
@@ -109,11 +112,6 @@ export function LoginForm() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-2 rounded-md">
-              {error}
-            </div>
-          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -129,13 +127,12 @@ export function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
-              <Button
-                type="button"
-                variant="link"
-                className="p-0 h-auto font-normal"
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-muted-foreground hover:text-primary underline-offset-4 hover:underline"
               >
                 Forgot password?
-              </Button>
+              </Link>
             </div>
             <Input
               id="password"
@@ -151,7 +148,7 @@ export function LoginForm() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <BrandSpinner size="sm" className="mr-2" />
                 Logging in...
               </>
             ) : (

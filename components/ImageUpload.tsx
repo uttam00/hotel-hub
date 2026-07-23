@@ -7,6 +7,7 @@ import { Trash } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import imageCompression from "browser-image-compression";
+import { toast } from "sonner";
 
 interface ImageUploadProps {
   hideLabel?: boolean;
@@ -14,6 +15,7 @@ interface ImageUploadProps {
   onChange: (urls: string[]) => void;
   onRemove: (url: string) => void;
   maxImages?: number;
+  folder?: string;
 }
 
 export default function ImageUpload({
@@ -22,6 +24,7 @@ export default function ImageUpload({
   onChange,
   onRemove,
   maxImages = 5,
+  folder = "hostels",
 }: ImageUploadProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -39,40 +42,43 @@ export default function ImageUpload({
     }
   };
 
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const compressed = await compressImage(file);
+    const formData = new FormData();
+    formData.append("file", compressed);
+    formData.append("folderName", folder);
+
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.url as string;
+  };
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
+
+    const slotsLeft = maxImages - value.length;
+    const filesToUpload = Array.from(files).slice(0, slotsLeft);
 
     setIsProcessing(true);
-    const newImages: string[] = [];
-
     try {
-      for (const file of Array.from(files)) {
-        if (newImages.length + value.length >= maxImages) break;
+      const results = await Promise.all(filesToUpload.map(uploadImage));
+      const uploaded = results.filter((url): url is string => !!url);
 
-        // Compress the image
-        const compressedFile = await compressImage(file);
+      if (uploaded.length < filesToUpload.length) {
+        toast.error("Some images failed to upload. Please try those again.");
+      }
 
-        // Convert to base64
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (typeof reader.result === "string") {
-            newImages.push(reader.result);
-            if (
-              newImages.length ===
-              Math.min(Array.from(files).length, maxImages - value.length)
-            ) {
-              const updatedUrls = [...value, ...newImages];
-              onChange(updatedUrls);
-              setIsProcessing(false);
-            }
-          }
-        };
-        reader.readAsDataURL(compressedFile);
+      if (uploaded.length > 0) {
+        onChange([...value, ...uploaded]);
       }
     } catch (error) {
-      console.error("Error processing images:", error);
+      console.error("Error uploading images:", error);
+      toast.error("Failed to upload images");
+    } finally {
       setIsProcessing(false);
+      e.target.value = "";
     }
   };
 
@@ -120,7 +126,7 @@ export default function ImageUpload({
           />
           {isProcessing && (
             <p className="text-sm text-muted-foreground">
-              Processing images...
+              Uploading images...
             </p>
           )}
         </div>

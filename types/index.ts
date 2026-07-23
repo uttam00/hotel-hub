@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 export enum HostelStatus {
   ACTIVE = "ACTIVE",
   INACTIVE = "INACTIVE",
+  PENDING_VERIFICATION = "PENDING_VERIFICATION",
 }
 
 export type User = {
@@ -12,6 +13,7 @@ export type User = {
   phoneNumber?: string;
   image?: string;
   role: "STUDENT" | "HOSTEL_ADMIN" | "SUPER_ADMIN";
+  isVerified: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -42,6 +44,7 @@ export type Hostel = {
     isAvailable: boolean;
   }[];
   admins?: User[];
+  subscription?: Subscription;
 };
 
 export type HostelDetails = Prisma.HostelGetPayload<{
@@ -112,7 +115,7 @@ export type BookingDetails = Booking & {
     id: string;
     name?: string;
     email?: string;
-    PhoneNumber?: string;
+    phoneNumber?: string;
     image?: string;
   };
   room: {
@@ -140,7 +143,8 @@ export type Payment = {
   createdAt: string;
   description?: string;
   dueDate?: string;
-  paid?: boolean;
+  refundedAmount?: number;
+  refundReason?: string;
   booking?: BookingDetails;
 };
 
@@ -148,7 +152,24 @@ export type Notification = {
   id: string;
   title: string;
   message: string;
+  type: "BOOKING" | "PAYMENT" | "SUBSCRIPTION" | "VERIFICATION" | "GENERAL";
   read: boolean;
+  createdAt: string;
+};
+
+export type Subscription = {
+  id: string;
+  plan: "MONTHLY" | "YEARLY";
+  status: "ACTIVE" | "EXPIRED" | "CANCELLED";
+  startDate: string;
+  endDate: string;
+  hostelId: string;
+};
+
+export type Wishlist = {
+  id: string;
+  hostelId: string;
+  userId: string;
   createdAt: string;
 };
 
@@ -157,6 +178,7 @@ export type HostelAdmin = {
   name: string | null;
   email: string | null;
   role: string;
+  isVerified: boolean;
   createdAt: string;
   hostels: Array<{ id: string; name?: string }>;
 };

@@ -11,22 +11,9 @@ const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 };
 
-// Auth APIs
+// Auth APIs — login itself goes through next-auth's signIn() client-side
+// (see components/auth/login-form.tsx), not a route here.
 export const authApi = {
-  login: async (credentials: { email: string; password: string }) => {
-    const response = await fetch(`${getBaseUrl()}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(credentials),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to login");
-    }
-    return response.json();
-  },
-
   register: async (userData: {
     name: string;
     email: string;
@@ -73,11 +60,19 @@ export const hostelApi = {
     city?: string;
     page?: number;
     limit?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    amenities?: string;
+    sort?: string;
   }): Promise<PaginatedResponse<any>> => {
     const searchParams = new URLSearchParams();
     if (params?.city) searchParams.append("city", params.city);
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.limit) searchParams.append("limit", params.limit.toString());
+    if (params?.minPrice) searchParams.append("minPrice", params.minPrice.toString());
+    if (params?.maxPrice) searchParams.append("maxPrice", params.maxPrice.toString());
+    if (params?.amenities) searchParams.append("amenities", params.amenities);
+    if (params?.sort) searchParams.append("sort", params.sort);
 
     const queryString = searchParams.toString();
     const url = `${getBaseUrl()}/api/hostels${
@@ -179,10 +174,9 @@ export const adminApi = {
       body: JSON.stringify(adminData),
     });
 
-    const data = await response.text(); // Use .text() first to safely parse
-
     if (!response.ok) {
-      throw new Error(data); // This will be "Email already exists" or any custom text
+      const errorText = await response.text();
+      throw new Error(errorText);
     }
 
     return response.json();
@@ -298,8 +292,8 @@ export const bookingApi = {
   },
 
   cancel: async (id: string) => {
-    const response = await fetch(`${getBaseUrl()}/api/bookings/${id}/cancel`, {
-      method: "POST",
+    const response = await fetch(`${getBaseUrl()}/api/bookings/${id}`, {
+      method: "DELETE",
     });
     if (!response.ok) throw new Error("Failed to cancel booking");
     return response.json();
@@ -308,10 +302,19 @@ export const bookingApi = {
 
 // Payment APIs
 export const paymentApi = {
-  getAll: async () => {
-    const response = await fetch(`${getBaseUrl()}/api/payments`);
+  getAll: async (params?: { status?: string; page?: number; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append("status", params.status);
+    if (params?.page) searchParams.append("page", params.page.toString());
+    if (params?.limit) searchParams.append("limit", params.limit.toString());
+
+    const queryString = searchParams.toString();
+    const url = `${getBaseUrl()}/api/payments${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url);
     if (!response.ok) throw new Error("Failed to fetch payments");
-    return response.json();
+    const data = await response.json();
+    return data.payments || [];
   },
 
   getById: async (id: string) => {
@@ -322,41 +325,79 @@ export const paymentApi = {
     return response.json();
   },
 
+  // Starts a real payment: creates a PENDING Payment and returns a Stripe
+  // Checkout URL to redirect the student to. The payment only becomes
+  // COMPLETED once Stripe's webhook confirms it — never on this response.
   create: async (paymentData: {
     bookingId: string;
     amount: number;
     method: string;
-  }) => {
-    const response = await fetch(`${getBaseUrl()}/api/payments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(paymentData),
-    });
-    if (!response.ok) throw new Error("Failed to create payment");
+  }): Promise<{ payment: any; url: string }> => {
+    const response = await fetch(
+      `${getBaseUrl()}/api/bookings/${paymentData.bookingId}/payments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: paymentData.amount, method: paymentData.method }),
+      }
+    );
+    if (!response.ok) throw new Error("Failed to start payment");
     return response.json();
   },
 
-  update: async (id: string, paymentData: any) => {
-    const response = await fetch(`${getBaseUrl()}/api/payments/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(paymentData),
+  // Resumes checkout for an existing PENDING payment (e.g. a previously
+  // abandoned Stripe session) instead of creating a duplicate Payment row.
+  resumeCheckout: async (id: string): Promise<{ url: string }> => {
+    const response = await fetch(`${getBaseUrl()}/api/payments/${id}/checkout`, {
+      method: "POST",
     });
-    if (!response.ok) {
-      throw new Error("Failed to update payment");
-    }
+    if (!response.ok) throw new Error("Failed to start checkout");
+    return response.json();
+  },
+
+  refund: async (id: string, data?: { amount?: number; reason?: string }) => {
+    const response = await fetch(`${getBaseUrl()}/api/payments/${id}/refund`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data || {}),
+    });
+    if (!response.ok) throw new Error("Failed to process refund");
+    return response.json();
+  },
+};
+
+// Hostel Admin subscription/billing APIs
+export const subscriptionApi = {
+  get: async () => {
+    const response = await fetch(`${getBaseUrl()}/api/hostel-admin/subscription`);
+    if (!response.ok) throw new Error("Failed to fetch subscription");
+    return response.json();
+  },
+
+  checkout: async (plan: "MONTHLY" | "YEARLY"): Promise<{ url: string }> => {
+    const response = await fetch(`${getBaseUrl()}/api/hostel-admin/subscription`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    });
+    if (!response.ok) throw new Error("Failed to start checkout");
     return response.json();
   },
 };
 
 // Notification APIs
 export const notificationApi = {
-  getAll: async () => {
-    const response = await fetch(`${getBaseUrl()}/api/notifications`);
+  getAll: async (params?: { unread?: boolean }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.unread) searchParams.append("unread", "true");
+
+    const queryString = searchParams.toString();
+    const url = `${getBaseUrl()}/api/notifications${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url);
     if (!response.ok) throw new Error("Failed to fetch notifications");
-    return response.json();
+    const data = await response.json();
+    return data.notifications || [];
   },
 
   getById: async (id: string) => {
@@ -383,7 +424,7 @@ export const notificationApi = {
 
   markAsRead: async (id: string) => {
     const response = await fetch(
-      `${getBaseUrl()}/api/notifications/${id}/read`,
+      `${getBaseUrl()}/api/notifications/${id}`,
       {
         method: "POST",
       }

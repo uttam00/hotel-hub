@@ -7,6 +7,7 @@ import { hostelApi } from "@/services/api";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { Role } from "@prisma/client";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 export default function EditHostelPage() {
   const { user } = useAuth();
@@ -46,7 +47,7 @@ export default function EditHostelPage() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner fullPage message="Loading hostel..." />;
   }
 
   if (!hostel) {

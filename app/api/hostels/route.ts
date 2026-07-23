@@ -11,6 +11,17 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const city = searchParams.get("city");
+    const minPrice = searchParams.get("minPrice")
+      ? Number.parseFloat(searchParams.get("minPrice") as string)
+      : null;
+    const maxPrice = searchParams.get("maxPrice")
+      ? Number.parseFloat(searchParams.get("maxPrice") as string)
+      : null;
+    const amenities = searchParams.get("amenities")
+      ? (searchParams.get("amenities") as string).split(",")
+      : null;
+    const availability = searchParams.get("availability");
+    const sort = searchParams.get("sort"); // price_asc, price_desc, rating
     const limit = searchParams.get("limit")
       ? Number.parseInt(searchParams.get("limit") as string)
       : 10;
@@ -19,14 +30,29 @@ export async function GET(req: Request) {
       : 1;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.HostelWhereInput = city
-      ? {
-          city: {
-            contains: city,
-            mode: Prisma.QueryMode.insensitive,
-          },
-        }
-      : {};
+    const where: Prisma.HostelWhereInput = {
+      status: "ACTIVE" as any,
+      ...(city
+        ? {
+            city: {
+              contains: city,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          }
+        : {}),
+      ...(amenities && amenities.length > 0
+        ? { amenities: { hasEvery: amenities } }
+        : {}),
+      ...(availability === "available"
+        ? { rooms: { some: { isAvailable: true } } }
+        : {}),
+    };
+
+    // Determine sort order
+    let orderBy: any = { createdAt: "desc" as const };
+    if (sort === "rating") {
+      // We'll sort in-memory after computing average rating
+    }
 
     const hostels = await prisma.hostel.findMany({
       where,
@@ -53,12 +79,10 @@ export async function GET(req: Request) {
           },
         },
       },
-      skip,
-      take: limit,
     });
 
-    // Calculate average rating for each hostel
-    const hostelsWithRating = hostels.map((hostel) => {
+    // Calculate average rating and compute fields
+    let hostelsWithRating = hostels.map((hostel) => {
       const totalRatings = hostel.reviews.reduce(
         (sum: number, review: { rating: number }) => sum + review.rating,
         0
@@ -68,27 +92,51 @@ export async function GET(req: Request) {
       const availableRooms = hostel.rooms.filter(
         (room: { isAvailable: boolean }) => room.isAvailable
       ).length;
+      const lowestPrice =
+        hostel.rooms.length > 0
+          ? Math.min(
+              ...hostel.rooms.map((room: { price: number }) => room.price)
+            )
+          : 0;
 
       return {
         ...hostel,
         averageRating,
         reviewCount: hostel.reviews.length,
         availableRooms,
-        lowestPrice:
-          hostel.rooms.length > 0
-            ? Math.min(
-                ...hostel.rooms.map((room: { price: number }) => room.price)
-              )
-            : 0,
-        // Remove the full reviews array from the response
+        lowestPrice,
+        totalRooms: hostel.rooms.length,
         reviews: undefined,
       };
     });
 
-    const total = await prisma.hostel.count({ where });
+    // Post-filter by price range (computed from rooms)
+    if (minPrice !== null) {
+      hostelsWithRating = hostelsWithRating.filter(
+        (h) => h.lowestPrice >= minPrice
+      );
+    }
+    if (maxPrice !== null) {
+      hostelsWithRating = hostelsWithRating.filter(
+        (h) => h.lowestPrice <= maxPrice
+      );
+    }
+
+    // Sort
+    if (sort === "price_asc") {
+      hostelsWithRating.sort((a, b) => a.lowestPrice - b.lowestPrice);
+    } else if (sort === "price_desc") {
+      hostelsWithRating.sort((a, b) => b.lowestPrice - a.lowestPrice);
+    } else if (sort === "rating") {
+      hostelsWithRating.sort((a, b) => b.averageRating - a.averageRating);
+    }
+
+    // Paginate after filtering
+    const total = hostelsWithRating.length;
+    const paginated = hostelsWithRating.slice(skip, skip + limit);
 
     return NextResponse.json({
-      hostels: hostelsWithRating,
+      hostels: paginated,
       pagination: {
         total,
         pages: Math.ceil(total / limit),

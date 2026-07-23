@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma, Status } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUser, authzErrorResponse } from "@/lib/authz";
 import { bookingUpdateSchema } from "@/lib/validation_schema";
+import { calculateBookingPrice } from "@/lib/pricing";
+import { notifyNextWaiting } from "@/lib/waitlist";
 
 // GET a specific booking
 export async function GET(
@@ -10,11 +13,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireUser();
 
     const booking = await prisma.booking.findUnique({
       where: { id: params.id },
@@ -61,7 +60,6 @@ export async function GET(
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Check if user has permission to view this booking
     if (
       (user.role === "STUDENT" && booking.userId !== user.id) ||
       (user.role === "HOSTEL_ADMIN" &&
@@ -72,6 +70,8 @@ export async function GET(
 
     return NextResponse.json(booking);
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
     console.error("Error fetching booking:", error);
     return NextResponse.json(
       { error: "Failed to fetch booking" },
@@ -80,26 +80,30 @@ export async function GET(
   }
 }
 
+function overlapClause(checkIn: Date, checkOut: Date): Prisma.BookingWhereInput {
+  return {
+    status: { in: [Status.PENDING, Status.CONFIRMED] },
+    OR: [
+      { AND: [{ checkIn: { lte: checkIn } }, { checkOut: { gt: checkIn } }] },
+      { AND: [{ checkIn: { lt: checkOut } }, { checkOut: { gte: checkOut } }] },
+      { AND: [{ checkIn: { gte: checkIn } }, { checkOut: { lte: checkOut } }] },
+    ],
+  };
+}
+
 // PUT update a booking
 export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireUser();
 
     const booking = await prisma.booking.findUnique({
       where: { id: params.id },
       include: {
         room: {
-          select: {
-            id: true,
-            hostelId: true,
-          },
+          select: { id: true, hostelId: true, price: true },
         },
       },
     });
@@ -108,7 +112,6 @@ export async function PUT(
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Check if user has permission to update this booking
     if (
       (user.role === "STUDENT" && booking.userId !== user.id) ||
       (user.role === "HOSTEL_ADMIN" &&
@@ -120,78 +123,75 @@ export async function PUT(
     const body = await req.json();
     const validatedData = bookingUpdateSchema.parse(body);
 
-    // Additional validation for date changes
-    if (
-      validatedData.checkIn &&
-      validatedData.checkOut &&
-      validatedData.checkIn >= validatedData.checkOut
-    ) {
+    const checkIn = validatedData.checkIn ?? booking.checkIn;
+    const checkOut = validatedData.checkOut ?? booking.checkOut;
+    const datesChanged = !!(validatedData.checkIn || validatedData.checkOut);
+
+    if (datesChanged && checkIn >= checkOut) {
       return NextResponse.json(
         { error: "Check-out date must be after check-in date" },
         { status: 400 }
       );
     }
 
-    // If dates are changing, check for overlapping bookings
-    if (validatedData.checkIn || validatedData.checkOut) {
-      const checkIn = validatedData.checkIn || booking.checkIn;
-      const checkOut = validatedData.checkOut || booking.checkOut;
+    // totalPrice is recomputed server-side, never accepted from the client.
+    const updateData: Prisma.BookingUpdateInput = {
+      ...validatedData,
+      ...(datesChanged
+        ? { totalPrice: calculateBookingPrice(booking.room.price, checkIn, checkOut) }
+        : {}),
+    };
 
-      const overlappingBookings = await prisma.booking.findMany({
-        where: {
-          roomId: booking.roomId,
-          id: { not: booking.id },
-          status: {
-            in: ["PENDING", "CONFIRMED"],
-          },
-          OR: [
-            {
-              // New booking starts during an existing booking
-              AND: [
-                { checkIn: { lte: checkIn } },
-                { checkOut: { gt: checkIn } },
-              ],
+    const updatedBooking = await prisma.$transaction(
+      async (tx) => {
+        if (datesChanged) {
+          const overlapping = await tx.booking.findFirst({
+            where: {
+              roomId: booking.roomId,
+              id: { not: booking.id },
+              ...overlapClause(checkIn, checkOut),
             },
-            {
-              // New booking ends during an existing booking
-              AND: [
-                { checkIn: { lt: checkOut } },
-                { checkOut: { gte: checkOut } },
-              ],
-            },
-            {
-              // New booking completely contains an existing booking
-              AND: [
-                { checkIn: { gte: checkIn } },
-                { checkOut: { lte: checkOut } },
-              ],
-            },
-          ],
-        },
-      });
+          });
+          if (overlapping) throw new RoomUnavailableError();
+        }
 
-      if (overlappingBookings.length > 0) {
-        return NextResponse.json(
-          { error: "Room is already booked for the selected dates" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Update the booking
-    const updatedBooking = await prisma.booking.update({
-      where: { id: params.id },
-      data: validatedData,
-    });
+        return tx.booking.update({
+          where: { id: params.id },
+          data: updateData,
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
 
     return NextResponse.json(updatedBooking);
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid input", details: error.flatten() },
         { status: 400 }
       );
     }
+
+    if (error instanceof RoomUnavailableError) {
+      return NextResponse.json(
+        { error: "Room is already booked for the selected dates" },
+        { status: 409 }
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return NextResponse.json(
+        { error: "This room was just booked by someone else. Please try different dates." },
+        { status: 409 }
+      );
+    }
+
     console.error("Error updating booking:", error);
     return NextResponse.json(
       { error: "Failed to update booking" },
@@ -206,11 +206,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireUser();
 
     const booking = await prisma.booking.findUnique({
       where: { id: params.id },
@@ -219,6 +215,7 @@ export async function DELETE(
           select: {
             id: true,
             hostelId: true,
+            roomType: true,
           },
         },
       },
@@ -228,7 +225,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Check if user has permission to cancel this booking
     if (
       (user.role === "STUDENT" && booking.userId !== user.id) ||
       (user.role === "HOSTEL_ADMIN" &&
@@ -237,7 +233,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Only allow cancellation of pending or confirmed bookings
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
       return NextResponse.json(
         { error: "Cannot cancel a booking that is not pending or confirmed" },
@@ -245,14 +240,17 @@ export async function DELETE(
       );
     }
 
-    // Update booking status to cancelled
     await prisma.booking.update({
       where: { id: params.id },
       data: { status: "CANCELLED" },
     });
 
+    await notifyNextWaiting(booking.room.hostelId, booking.room.roomType);
+
     return NextResponse.json({ message: "Booking cancelled successfully" });
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
     console.error("Error cancelling booking:", error);
     return NextResponse.json(
       { error: "Failed to cancel booking" },
@@ -261,14 +259,13 @@ export async function DELETE(
   }
 }
 
-// Helper function to check if a user is an admin of a hostel
-async function isHostelAdmin(userId: string, id: string): Promise<boolean> {
+class RoomUnavailableError extends Error {}
+
+async function isHostelAdmin(userId: string, hostelId: string): Promise<boolean> {
   const hostel = await prisma.hostel.findUnique({
-    where: { id: id },
+    where: { id: hostelId },
     include: {
-      admins: {
-        where: { id: userId },
-      },
+      admins: { where: { id: userId } },
     },
   });
 

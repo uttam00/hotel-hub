@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { hostelUpdateSchema } from "@/lib/validation_schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireRole, authzErrorResponse } from "@/lib/authz";
+import { logAudit } from "@/lib/audit";
 
 // GET a specific hostel
 export async function GET(req: Request, context: { params: { id: string } }) {
@@ -115,58 +117,56 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
   }
 }
 
-// DELETE a hostel
+// DELETE a hostel — blocked while it still has rooms, since Room (and
+// everything under it: bookings, payments) cascades on delete. Deleting a
+// hostel with active rooms would otherwise silently wipe booking/payment
+// history. The many-to-many admin link is cleared automatically by Prisma
+// when the hostel row is deleted, so no manual disconnect step is needed.
 export async function DELETE(
   req: Request,
   context: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user || user.role !== "SUPER_ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    const user = await requireRole("SUPER_ADMIN");
 
     const { params } = context;
 
-    // First, find all users who are assigned to this hostel
-    const usersWithHostel = await prisma.user.findMany({
-      where: {
-        hostels: {
-          some: {
-            id: params.id,
-          },
-        },
-      },
-    });
-
-    // Disconnect each user from the hostel
-    for (const user of usersWithHostel) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          hostels: {
-            disconnect: [{ id: params.id }],
-          },
-        },
-      });
-    }
-
-    // Then dele
-    //
     const hostel = await prisma.hostel.findUnique({
       where: { id: params.id },
+      include: { _count: { select: { rooms: true } } },
     });
 
     if (!hostel) {
       return NextResponse.json({ error: "Hostel not found" }, { status: 404 });
     }
+
+    if (hostel._count.rooms > 0) {
+      return NextResponse.json(
+        {
+          error: "HOSTEL_HAS_ROOMS",
+          message: "Cannot delete a hostel that still has rooms. Remove its rooms first.",
+        },
+        { status: 400 }
+      );
+    }
+
     await prisma.hostel.delete({
       where: { id: params.id },
     });
 
+    await logAudit({
+      actorId: user.id,
+      actorRole: user.role,
+      action: "HOSTEL_DELETED",
+      entityType: "Hostel",
+      entityId: params.id,
+      metadata: { name: hostel.name },
+    });
+
     return NextResponse.json({ message: "Hostel deleted successfully" });
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
     console.error("Error deleting hostel:", error);
     return NextResponse.json(
       { error: "Failed to delete hostel" },

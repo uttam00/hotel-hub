@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   req: Request,
@@ -190,9 +191,78 @@ export async function DELETE(
       where: { id: params.id },
     });
 
+    await logAudit({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "HOSTEL_DELETED",
+      entityType: "Hostel",
+      entityId: params.id,
+      metadata: { name: hostel.name },
+    });
+
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("[HOSTEL_DELETE]", error);
     return new NextResponse("Internal error", { status: 500 });
   }
 }
+
+// PATCH - Verify/approve/reject hostel (Super Admin only)
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== "SUPER_ADMIN") {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const body = await req.json();
+    const { status } = body;
+
+    if (!status || !["ACTIVE", "INACTIVE", "PENDING_VERIFICATION"].includes(status)) {
+      return NextResponse.json(
+        { error: "Invalid status. Must be ACTIVE, INACTIVE, or PENDING_VERIFICATION" },
+        { status: 400 }
+      );
+    }
+
+    const hostel = await prisma.hostel.findUnique({
+      where: { id: params.id },
+      include: { admins: { select: { id: true, name: true, email: true } } },
+    });
+
+    if (!hostel) {
+      return new NextResponse("Hostel not found", { status: 404 });
+    }
+
+    const updated = await prisma.hostel.update({
+      where: { id: params.id },
+      data: { status },
+      include: {
+        admins: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    // Notify hostel admins about the status change
+    const statusText = status === "ACTIVE" ? "approved" : status === "INACTIVE" ? "rejected" : "pending review";
+    for (const admin of hostel.admins) {
+      await prisma.notification.create({
+        data: {
+          title: `Hostel ${statusText}`,
+          message: `Your hostel "${hostel.name}" has been ${statusText} by the platform administrator.`,
+          type: "VERIFICATION",
+          userId: admin.id,
+        },
+      });
+    }
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("[HOSTEL_PATCH]", error);
+    return new NextResponse("Internal error", { status: 500 });
+  }
+}
+

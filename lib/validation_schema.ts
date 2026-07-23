@@ -87,15 +87,17 @@ export const updateProfileSchema = z.object({
   image: z.string(),
 });
 
-//Schema for Booking creation
+// Schema for Booking creation — totalPrice is intentionally NOT accepted here.
+// It is always computed server-side from the room's price (see lib/pricing.ts)
+// so a request body can never dictate its own price.
 export const createBookingSchema = z.object({
   roomId: z.string().cuid("Invalid room ID"),
   checkIn: z.string().transform((str) => new Date(str)),
   checkOut: z.string().transform((str) => new Date(str)),
-  totalPrice: z.number().positive("Total price must be positive"),
 });
 
-// Schema for update booking
+// Schema for update booking — totalPrice is recomputed server-side whenever
+// checkIn/checkOut change, for the same reason as above.
 export const bookingUpdateSchema = z.object({
   status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"]).optional(),
   checkIn: z
@@ -106,7 +108,6 @@ export const bookingUpdateSchema = z.object({
     .string()
     .transform((str) => new Date(str))
     .optional(),
-  totalPrice: z.number().positive("Total price must be positive").optional(),
 });
 
 // Schema for payment creation
@@ -168,4 +169,56 @@ export const createRoomSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
+});
+
+// Schema for logging a visitor
+export const visitorSchema = z.object({
+  visitingStudentId: z.string().min(1, "Select the student being visited"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  purpose: z.string().min(2, "Purpose is required"),
+  idProofUrl: z.string().optional(),
+});
+
+// Schema for marking attendance
+export const attendanceSchema = z.object({
+  studentId: z.string().min(1),
+  date: z.string().transform((str) => new Date(str)),
+  status: z.enum(["PRESENT", "ABSENT", "LEAVE"]),
+  note: z.string().optional(),
+});
+
+// Schema for joining a waitlist
+export const waitlistSchema = z.object({
+  roomType: z.enum(["SINGLE", "DOUBLE", "TRIPLE", "DORMITORY"]),
+});
+
+// Schema for a notice
+export const noticeSchema = z.object({
+  title: z.string().min(2, "Title must be at least 2 characters"),
+  body: z.string().min(2, "Notice body is required"),
+  pinned: z.boolean().default(false),
+  expiresAt: z.string().optional(),
+});
+
+// Schema for an emergency contact
+export const emergencyContactSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  relation: z.string().min(2, "Relation is required"),
+  isPrimary: z.boolean().default(false),
+});
+
+// Schema for an expense
+export const expenseSchema = z.object({
+  category: z.enum(["UTILITIES", "SALARY", "MAINTENANCE", "SUPPLIES", "OTHER"]),
+  amount: z.number().positive("Amount must be positive"),
+  description: z.string().optional(),
+  date: z.string().transform((str) => new Date(str)),
+  receiptUrl: z.string().optional(),
+});
+
+// Schema for room transfer
+export const roomTransferSchema = z.object({
+  newRoomId: z.string().cuid("Invalid room ID"),
 });

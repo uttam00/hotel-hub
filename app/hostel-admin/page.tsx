@@ -2,7 +2,7 @@ import DashboardCard from "@/components/dashboardCard";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Role } from "@prisma/client";
-import { Calendar, CreditCard, Users } from "lucide-react";
+import { Calendar, CreditCard, Users, DoorOpen, DoorClosed, Building } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -65,6 +65,21 @@ export default async function HostelAdminDashboard() {
         },
       });
 
+  // Room stats
+  const totalRooms = !hostel
+    ? 0
+    : await prisma.room.count({
+        where: { hostelId: hostel.id },
+      });
+
+  const availableRooms = !hostel
+    ? 0
+    : await prisma.room.count({
+        where: { hostelId: hostel.id, isAvailable: true },
+      });
+
+  const occupiedRooms = totalRooms - availableRooms;
+
   const cardData = [
     {
       title: "Total Students",
@@ -87,11 +102,37 @@ export default async function HostelAdminDashboard() {
       icon: CreditCard,
       link: "/hostel-admin/payments",
     },
+    {
+      title: "Total Rooms",
+      count: totalRooms,
+      description: "All rooms in your hostel",
+      icon: Building,
+      link: hostel ? `/hostel-admin/hostels/${hostel.id}/edit` : "/hostel-admin/hostels",
+    },
+    {
+      title: "Available Rooms",
+      count: availableRooms,
+      description: "Rooms ready for booking",
+      icon: DoorOpen,
+      link: hostel ? `/hostel-admin/hostels/${hostel.id}/edit` : "/hostel-admin/hostels",
+    },
+    {
+      title: "Occupied Rooms",
+      count: occupiedRooms,
+      description: "Currently occupied rooms",
+      icon: DoorClosed,
+      link: hostel ? `/hostel-admin/hostels/${hostel.id}/edit` : "/hostel-admin/hostels",
+    },
   ];
 
   return (
     <div className="container mx-auto pb-8">
-      <h1 className="text-2xl font-bold mb-8">Hostel Admin Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-2">Hostel Admin Dashboard</h1>
+      {hostel && (
+        <p className="text-muted-foreground mb-8">
+          Managing: <span className="font-medium text-foreground">{hostel.name}</span>
+        </p>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {cardData.map(({ count, description, icon, link, title }, index) => {
@@ -110,3 +151,4 @@ export default async function HostelAdminDashboard() {
     </div>
   );
 }
+

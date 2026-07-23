@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "HostelStatus" ADD VALUE 'PENDING_VERIFICATION';

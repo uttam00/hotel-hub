@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import HostelForm from "@/components/hostel/HostelForm";
 import { hostelApi } from "@/services/api";
 import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 export default function EditHostelPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function EditHostelPage() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner fullPage message="Loading hostel..." />;
   }
 
   if (!hostel) {

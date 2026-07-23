@@ -3,6 +3,8 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createRoomSchema } from "@/lib/validation_schema";
+import { requireFullAccess } from "@/lib/subscription";
+import { authzErrorResponse } from "@/lib/authz";
 
 // GET all rooms for a hostel
 export async function GET(
@@ -79,6 +81,10 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    if (user.role !== "SUPER_ADMIN") {
+      await requireFullAccess(params.id);
+    }
+
     const body = await req.json();
     const validatedData = createRoomSchema.parse(body);
 
@@ -106,6 +112,9 @@ export async function POST(
 
     return NextResponse.json(room, { status: 201 });
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid input", details: error.flatten() },

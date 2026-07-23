@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building } from "lucide-react";
+import { AuthHeader } from "@/components/auth/auth-header";
 import { LoginForm } from "@/components/auth/login-form";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -31,18 +31,7 @@ export default async function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <div className="w-full max-w-md space-y-6">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <Building className="h-6 w-6" />
-            <span className="text-xl font-bold">HostelHub</span>
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your credentials to access your account
-          </p>
-        </div>
+        <AuthHeader heading="Welcome back" description="Enter your credentials to access your account" />
         <LoginForm />
         <div className="text-center text-sm">
           Don&apos;t have an account?{" "}

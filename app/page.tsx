@@ -1,5 +1,6 @@
-"use client";
-
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,7 +11,23 @@ import {
 import { Building, Search, Star, Users } from "lucide-react";
 import Link from "next/link";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+
+  // A logged-in user landing on the public marketing page — via a pasted
+  // URL, a bookmark, or a reopened tab — belongs on their own dashboard, not
+  // here. Mirrors the same redirect already used on /auth/login.
+  if (session?.user) {
+    switch (session.user.role) {
+      case "SUPER_ADMIN":
+        redirect("/super-admin");
+      case "HOSTEL_ADMIN":
+        redirect("/hostel-admin");
+      case "STUDENT":
+        redirect("/dashboard");
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">

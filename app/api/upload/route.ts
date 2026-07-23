@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { runtime } from "../../../config";
+import { requireUser, authzErrorResponse } from "@/lib/authz";
 
 export { runtime };
 
@@ -11,31 +12,45 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_MIME_PREFIXES = ["image/"];
+
 export async function POST(req: NextRequest) {
   try {
+    // Any logged-in user may upload (profile photo, hostel photo, ID proof),
+    // but the endpoint may never be reachable anonymously — it writes to a
+    // paid Cloudinary account with no other quota.
+    await requireUser();
+
     const formData = await req.formData();
-    const file = formData.get("file") as File;
-    // const title = formData.get("title") as string;
-    // const category = formData.get("category") as string;
-    // const description = formData.get("description") as string;
-    const folderName = formData.get("folderName") as string;
+    const file = formData.get("file") as File | null;
+    const folderName = (formData.get("folderName") as string) || "uploads";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Convert file to buffer
+    if (!ALLOWED_MIME_PREFIXES.some((prefix) => file.type.startsWith(prefix))) {
+      return NextResponse.json(
+        { error: "Only image uploads are allowed" },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > MAX_FILE_BYTES) {
+      return NextResponse.json(
+        { error: "File must be smaller than 10MB" },
+        { status: 400 }
+      );
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload to Cloudinary
     const result = await new Promise((resolve, reject) => {
       cloudinary.uploader
         .upload_stream(
-          {
-            resource_type: "auto",
-            folder: folderName,
-          },
+          { resource_type: "auto", folder: folderName },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);
@@ -44,16 +59,12 @@ export async function POST(req: NextRequest) {
         .end(buffer);
     });
 
-    console.log({ result });
-
     const { secure_url, width, height } = result as any;
 
-    return NextResponse.json({
-      url: secure_url,
-      width,
-      height,
-    });
+    return NextResponse.json({ url: secure_url, width, height });
   } catch (error) {
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
     console.error("Upload error:", error);
     return NextResponse.json(
       { error: "Failed to upload file" },
