@@ -12,7 +12,8 @@ const refundSchema = z.object({
 
 // POST refund a completed payment. Hostel admins/super admins only — this
 // executes a real Stripe refund, it isn't a request/approval queue.
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 

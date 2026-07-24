@@ -4,7 +4,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   // Dev-only: keep compiled routes warm instead of evicting them after the
   // default 25s of inactivity. Without this, pasting a URL to a route you

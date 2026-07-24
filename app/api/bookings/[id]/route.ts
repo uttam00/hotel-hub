@@ -10,8 +10,8 @@ import { notifyNextWaiting } from "@/lib/waitlist";
 // GET a specific booking
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 
@@ -94,8 +94,8 @@ function overlapClause(checkIn: Date, checkOut: Date): Prisma.BookingWhereInput 
 // PUT update a booking
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 
@@ -203,8 +203,8 @@ export async function PUT(
 // DELETE a booking (cancel)
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 

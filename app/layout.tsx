@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { GoogleMapsProvider } from "@/components/providers/google-maps-provider";
+import { ChunkErrorReload } from "@/components/providers/chunk-error-reload";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -34,6 +35,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <ChunkErrorReload />
         <SessionProvider session={session}>
           <ThemeProvider
             attribute="class"

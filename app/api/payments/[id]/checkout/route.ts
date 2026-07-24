@@ -6,7 +6,8 @@ import { paymentProvider } from "@/lib/payments";
 // POST resume checkout for an existing PENDING payment (e.g. the student
 // abandoned Stripe Checkout last time). Never creates a new Payment row —
 // that would double-count against the booking's remaining balance.
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 

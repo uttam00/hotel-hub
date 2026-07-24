@@ -9,7 +9,8 @@ const updateSchema = z.object({
 });
 
 // PATCH check a visitor out and/or update their verification status
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireRole("HOSTEL_ADMIN", "SUPER_ADMIN");
 

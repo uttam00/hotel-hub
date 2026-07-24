@@ -7,8 +7,8 @@ import { adminSchema } from "@/lib/validation_schema";
 // GET all admins for a hostel
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 
@@ -46,8 +46,8 @@ export async function GET(
 // POST add an admin to a hostel
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 
@@ -111,8 +111,8 @@ export async function POST(
 // DELETE remove an admin from a hostel
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 

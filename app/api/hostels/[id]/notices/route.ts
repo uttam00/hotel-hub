@@ -6,7 +6,8 @@ import { requireFullAccess } from "@/lib/subscription";
 import { noticeSchema } from "@/lib/validation_schema";
 
 // GET active notices for a hostel (public — shown on the hostel's page)
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const notices = await prisma.notice.findMany({
       where: {
@@ -25,7 +26,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // POST create a notice — a premium feature, requires an active subscription.
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireRole("HOSTEL_ADMIN", "SUPER_ADMIN");
     await requireHostelAccess(user.id, user.role, params.id);

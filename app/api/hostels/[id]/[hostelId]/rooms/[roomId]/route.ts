@@ -8,8 +8,8 @@ import { roomUpdateSchema } from "@/lib/validation_schema";
 // GET a specific room
 export async function GET(
   req: Request,
-  { params }: { params: { id: string; roomId: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string; roomId: string }> }) {
+  const params = await __params;
   try {
     const room = await prisma.room.findUnique({
       where: {
@@ -57,8 +57,8 @@ export async function GET(
 // PUT update a room
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string; roomId: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string; roomId: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 
@@ -145,8 +145,8 @@ export async function PUT(
 // DELETE a room
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string; roomId: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string; roomId: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 

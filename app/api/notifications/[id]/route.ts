@@ -6,8 +6,8 @@ import logger from "@/lib/logger";
 // POST mark notification as read
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 
@@ -48,8 +48,8 @@ export async function POST(
 // DELETE notification
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(node \"C:/Users/uttam/AppData/Local/Temp/claude/F--work-hostel-hub/a85d066f-c425-4a33-8a54-1ac0bfe55c0f/scratchpad/fix-params.js\")",
+      "Bash(npx next *)",
+      "Bash(yarn add *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(grep -i \"^jest$\\\\|ts-jest\\\\|jest-mock-extended\")",
+      "Bash(npx jest *)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

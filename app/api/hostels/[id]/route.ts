@@ -7,8 +7,8 @@ import { requireRole, authzErrorResponse } from "@/lib/authz";
 import { logAudit } from "@/lib/audit";
 
 // GET a specific hostel
-export async function GET(req: Request, context: { params: { id: string } }) {
-  const { params } = context;
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
+  const params = await context.params;
   try {
     const hostel = await prisma.hostel.findUnique({
       where: { id: params.id },
@@ -66,9 +66,9 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 }
 
 // PUT update a hostel
-export async function PUT(req: Request, context: { params: { id: string } }) {
+export async function PUT(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const { params } = context;
+    const params = await context.params;
     const user = await getCurrentUser();
 
     if (!user) {
@@ -124,12 +124,12 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
 // when the hostel row is deleted, so no manual disconnect step is needed.
 export async function DELETE(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole("SUPER_ADMIN");
 
-    const { params } = context;
+    const params = await context.params;
 
     const hostel = await prisma.hostel.findUnique({
       where: { id: params.id },

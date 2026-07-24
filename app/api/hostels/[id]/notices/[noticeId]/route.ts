@@ -5,8 +5,8 @@ import { requireRole, requireHostelAccess, authzErrorResponse } from "@/lib/auth
 // DELETE a notice
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string; noticeId: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string; noticeId: string }> }) {
+  const params = await __params;
   try {
     const user = await requireRole("HOSTEL_ADMIN", "SUPER_ADMIN");
     await requireHostelAccess(user.id, user.role, params.id);

@@ -5,7 +5,8 @@ import { requireUser, requireRole, requireHostelAccess, authzErrorResponse } fro
 import { waitlistSchema } from "@/lib/validation_schema";
 
 // GET the waitlist for a hostel (hostel admin / super admin only)
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireRole("HOSTEL_ADMIN", "SUPER_ADMIN");
     await requireHostelAccess(user.id, user.role, params.id);
@@ -26,7 +27,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // POST join the waitlist for a room type at this hostel
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 

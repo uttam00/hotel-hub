@@ -6,7 +6,8 @@ import { paymentSchema } from "@/lib/validation_schema";
 import { paymentProvider } from "@/lib/payments";
 
 // GET all payments for a booking
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 
@@ -46,7 +47,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 // Checkout session for it. The Payment only ever becomes COMPLETED via the
 // Stripe webhook (app/api/webhooks/stripe) — never here, and never from the
 // client's redirect back to the success URL.
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 

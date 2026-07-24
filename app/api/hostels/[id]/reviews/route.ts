@@ -5,7 +5,8 @@ import { getCurrentUser } from "@/lib/auth"
 import { reviewSchema } from "@/lib/validation_schema"
 
 // GET all reviews for a hostel
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const { searchParams } = new URL(req.url)
     const limit = searchParams.get("limit") ? Number.parseInt(searchParams.get("limit") as string) : 10
@@ -46,7 +47,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // POST create a new review
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser()
 

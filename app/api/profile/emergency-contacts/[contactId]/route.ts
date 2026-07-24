@@ -3,7 +3,8 @@ import prisma from "@/lib/prisma";
 import { requireUser, authzErrorResponse } from "@/lib/authz";
 
 // DELETE an emergency contact (owner only)
-export async function DELETE(req: Request, { params }: { params: { contactId: string } }) {
+export async function DELETE(req: Request, { params: __params }: { params: Promise<{ contactId: string }> }) {
+  const params = await __params;
   try {
     const user = await requireUser();
 

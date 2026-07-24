@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -85,12 +86,16 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^22",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "jest": "^30.4.2",
+    "jest-mock-extended": "^4.0.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   }

@@ -9,7 +9,8 @@ import { calculateBookingPrice } from "@/lib/pricing";
 // POST move a student from their current room to another room in the same
 // hostel: closes the old booking and opens a new one for the same dates,
 // inside one transaction so the room can't be double-booked in the process.
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await requireRole("HOSTEL_ADMIN", "SUPER_ADMIN");
 

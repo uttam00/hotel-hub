@@ -9,8 +9,8 @@ import { authzErrorResponse } from "@/lib/authz";
 // GET all rooms for a hostel
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const { searchParams } = new URL(req.url);
     const roomType = searchParams.get("roomType");
@@ -54,8 +54,8 @@ export async function GET(
 // POST create a new room
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
-) {
+  { params: __params }: { params: Promise<{ id: string }> }) {
+  const params = await __params;
   try {
     const user = await getCurrentUser();
 
