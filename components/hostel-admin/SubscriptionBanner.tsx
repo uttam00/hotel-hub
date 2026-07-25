@@ -27,8 +27,8 @@ export function SubscriptionBanner() {
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 shrink-0" />
         <span>
-          Your subscription isn&apos;t active. Existing rooms and bookings stay visible, but
-          adding rooms and accepting new bookings is paused until you renew.
+          Your subscription isn&apos;t active. Existing data stays visible, but accepting new
+          bookings, posting notices, and adding rooms are paused until you renew.
         </span>
       </div>
       <Link href="/hostel-admin/billing" className="shrink-0 font-medium underline underline-offset-4">

@@ -1,37 +1,55 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import ChangePasswordForm from "@/components/forms/changePasswordform";
 import ProfileForm from "@/components/forms/profileForm";
 import EmergencyContactsForm from "@/components/forms/emergencyContactsForm";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/use-auth";
+import { HostelSubscriptions } from "@/components/profile/HostelSubscriptions";
+import { ProfileNav } from "@/components/profile/ProfileNav";
+import { AdminLayoutShell } from "@/components/common-in-admin/AdminLayoutShell";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-export default function ProfilePage() {
-  const { user } = useAuth();
-  const isStudent = user?.role === "STUDENT";
+function ProfilePageContent() {
+  // Sourced from the NextAuth session (same as the header's account menu),
+  // not the separate "user" cookie use-auth.ts reads — that cookie is only
+  // ever set inside the login form's client code, so gating this page on it
+  // left it stuck on a spinner forever whenever that cookie was missing
+  // while the real session was still perfectly valid.
+  const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") ?? "profile";
+
+  if (status === "loading" || !session?.user) {
+    return <LoadingSpinner fullPage message="Loading profile..." />;
+  }
+
+  const role = session.user.role;
+  const isStudent = role === "STUDENT";
+  const isHostelAdmin = role === "HOSTEL_ADMIN";
 
   return (
-    <div className="container py-8">
+    <AdminLayoutShell role={role} navContent={<ProfileNav showEmergency={isStudent} />}>
       <h1 className="text-2xl font-bold mb-6">Profile</h1>
-      <Tabs defaultValue="profile">
-        <TabsList className={`grid w-full mb-4 ${isStudent ? "grid-cols-3" : "grid-cols-2"}`}>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="password">Change Password</TabsTrigger>
-          {isStudent && <TabsTrigger value="emergency">Emergency Contacts</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="profile">
+      {tab === "password" ? (
+        <ChangePasswordForm />
+      ) : tab === "emergency" && isStudent ? (
+        <EmergencyContactsForm />
+      ) : (
+        <div className="space-y-6">
           <ProfileForm />
-        </TabsContent>
-        <TabsContent value="password">
-          <ChangePasswordForm />
-        </TabsContent>
-        {isStudent && (
-          <TabsContent value="emergency">
-            <EmergencyContactsForm />
-          </TabsContent>
-        )}
-      </Tabs>
-    </div>
+          {isHostelAdmin && <HostelSubscriptions />}
+        </div>
+      )}
+    </AdminLayoutShell>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<LoadingSpinner fullPage message="Loading profile..." />}>
+      <ProfilePageContent />
+    </Suspense>
   );
 }

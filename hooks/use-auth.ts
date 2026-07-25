@@ -23,12 +23,17 @@ export function useAuth() {
   }, []);
 
   const logout = async () => {
-    router.push("/auth/login");
+    // signOut must finish (and actually clear the session cookie) before we
+    // navigate — pushing to /auth/login first races the cookie clear, and
+    // middleware sees the still-valid session and bounces back to the
+    // dashboard while the header has already flipped to "logged out".
     await signOut({ redirect: false });
     removeUserCookie();
     setUser(null);
     localStorage.clear();
     sessionStorage.clear();
+    router.push("/auth/login");
+    router.refresh();
   };
 
   const updateUser = async (updatedData: Partial<UserCookie>) => {

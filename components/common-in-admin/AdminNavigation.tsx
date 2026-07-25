@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Building,
@@ -14,13 +13,14 @@ import {
   QrCode,
   Receipt,
   BarChart3,
-  Settings,
   UserCheck,
   User,
   Users,
   Wallet,
 } from "lucide-react";
 import { Role } from "@prisma/client";
+import { getDashboardPath } from "@/lib/route-access";
+import { SidebarNavLink } from "@/components/common-in-admin/SidebarNavLink";
 
 interface AdminNavigationProps {
   role: Role;
@@ -35,20 +35,19 @@ type NavLink = {
 function getNavLinks(role: Role): { links: NavLink[]; basePath: string } {
   if (role === Role.STUDENT) {
     return {
-      basePath: "/dashboard",
+      basePath: getDashboardPath(role),
       links: [
         { label: "Overview", href: "/dashboard", icon: Home },
         { label: "Bookings", href: "/dashboard/bookings", icon: Calendar },
         { label: "Payments", href: "/dashboard/payments", icon: CreditCard },
         { label: "My QR Code", href: "/dashboard/qr-code", icon: QrCode },
         { label: "Profile", href: "/profile", icon: User },
-        { label: "Settings", href: "/settings", icon: Settings },
       ],
     };
   }
 
   const isSuperAdmin = role === Role.SUPER_ADMIN;
-  const basePath = isSuperAdmin ? "/super-admin" : "/hostel-admin";
+  const basePath = getDashboardPath(role);
 
   const links: NavLink[] = [
     { label: "Dashboard", href: basePath, icon: Home },
@@ -85,23 +84,8 @@ export function AdminNavigation({ role }: AdminNavigationProps) {
 
   return (
     <nav className="grid items-start px-2 text-sm font-medium">
-      {links.map(({ label, href, icon: Icon }) => (
-        <Link
-          key={label}
-          href={href}
-          className="flex items-center gap-3 rounded-lg px-3 py-2
-            text-gray-500 transition-all
-            hover:text-gray-900 dark:text-gray-400
-            dark:hover:text-white
-            data-[active=true]:bg-gray-100
-            data-[active=true]:text-gray-900
-            dark:data-[active=true]:bg-gray-800
-            dark:data-[active=true]:text-white"
-          data-active={isActive(href)}
-        >
-          <Icon className="h-4 w-4" />
-          {label}
-        </Link>
+      {links.map(({ label, href, icon }) => (
+        <SidebarNavLink key={label} href={href} icon={icon} label={label} active={isActive(href)} />
       ))}
     </nav>
   );

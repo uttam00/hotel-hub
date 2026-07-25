@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,9 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { User, LogOut, Settings, Building } from "lucide-react";
-import { Role } from "@prisma/client";
+import { User, LogOut, Building } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { getDashboardPath } from "@/lib/route-access";
 
 export function UserAccountNav() {
   const { data: session, status } = useSession();
@@ -59,28 +59,16 @@ export function UserAccountNav() {
           .toUpperCase()
       : "U";
 
-  const getAdminPath = (role: Role) =>
-    role === "SUPER_ADMIN"
-      ? "/super-admin"
-      : role === "HOSTEL_ADMIN"
-      ? "/hostel-admin"
-      : "/dashboard";
-
   const menuItems = [
     {
       label: "Dashboard",
-      href: getAdminPath(user.role),
+      href: getDashboardPath(user.role),
       icon: user.role === "STUDENT" ? User : Building,
     },
     {
       label: "Profile",
       href: "/profile",
       icon: User,
-    },
-    {
-      label: "Settings",
-      href: "/settings",
-      icon: Settings,
     },
   ];
 

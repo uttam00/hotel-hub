@@ -11,23 +11,30 @@ interface AdminLayoutShellProps {
   children: ReactNode;
   topSlot?: ReactNode;
   sidebarTopSlot?: ReactNode;
+  /** Overrides the default role-based <AdminNavigation> — e.g. /profile's
+   * own section nav — while reusing this same sidebar shell. */
+  navContent?: ReactNode;
   menuButtonClassName?: string;
   sheetContentClassName?: string;
   sidebarClassName?: string;
 }
 
 // Shared mobile Sheet + fixed desktop sidebar shell used by the Student,
-// Hostel Admin, and Super Admin layouts. Each caller passes its own
-// classNames so today's per-role visual differences are preserved exactly.
+// Hostel Admin, and Super Admin layouts (and the Profile page). Each caller
+// passes its own classNames so today's per-role visual differences are
+// preserved exactly.
 export function AdminLayoutShell({
   role,
   children,
   topSlot,
   sidebarTopSlot,
+  navContent,
   menuButtonClassName,
   sheetContentClassName = "w-[300px] p-0",
   sidebarClassName = "hidden w-64 border-r bg-gray-50/40 dark:bg-gray-900 md:block",
 }: AdminLayoutShellProps) {
+  const nav = navContent ?? <AdminNavigation role={role} />;
+
   return (
     <div className="flex min-h-screen">
       {/* Mobile Navigation */}
@@ -40,9 +47,7 @@ export function AdminLayoutShell({
         <SheetContent side="left" className={sheetContentClassName}>
           <div className="flex h-full flex-col">
             {sidebarTopSlot && <div className="border-b p-3">{sidebarTopSlot}</div>}
-            <div className="flex-1 overflow-auto py-2">
-              <AdminNavigation role={role} />
-            </div>
+            <div className="flex-1 overflow-auto py-2">{nav}</div>
           </div>
         </SheetContent>
       </Sheet>
@@ -51,9 +56,7 @@ export function AdminLayoutShell({
       <div className={sidebarClassName}>
         <div className="flex h-full flex-col">
           {sidebarTopSlot && <div className="border-b p-3">{sidebarTopSlot}</div>}
-          <div className="flex-1 overflow-auto py-2">
-            <AdminNavigation role={role} />
-          </div>
+          <div className="flex-1 overflow-auto py-2">{nav}</div>
         </div>
       </div>
 

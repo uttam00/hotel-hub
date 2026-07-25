@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,12 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Trash, Megaphone } from "lucide-react";
 import { TableLoader } from "@/components/ui/loader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
+import { useHostelAccessLevel } from "@/hooks/use-hostel-access";
 import { noticeApi } from "@/services/api";
 
 export default function NoticesPage() {
@@ -25,6 +28,8 @@ export default function NoticesPage() {
     hostel ? () => noticeApi.getAll(hostel.id) : null,
     [hostel]
   );
+  const { accessLevel } = useHostelAccessLevel(hostel?.id);
+  const isLimited = accessLevel === "LIMITED";
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ title: "", body: "", pinned: false });
@@ -63,9 +68,28 @@ export default function NoticesPage() {
         description="Announcements visible to all your students"
         action={
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Megaphone className="mr-2 h-4 w-4" /> Post Notice</Button>
-          </DialogTrigger>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={isLimited ? 0 : undefined}>
+                  <DialogTrigger asChild>
+                    <Button disabled={isLimited}>
+                      <Megaphone className="mr-2 h-4 w-4" /> Post Notice
+                    </Button>
+                  </DialogTrigger>
+                </span>
+              </TooltipTrigger>
+              {isLimited && (
+                <TooltipContent>
+                  Your subscription isn&apos;t active.{" "}
+                  <Link href="/hostel-admin/billing" className="underline underline-offset-2">
+                    Renew
+                  </Link>{" "}
+                  to post notices.
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <DialogContent>
             <DialogHeader><DialogTitle>Post a Notice</DialogTitle></DialogHeader>
             <div className="space-y-4">
