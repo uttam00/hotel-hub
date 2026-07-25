@@ -10,6 +10,7 @@ interface AdminLayoutShellProps {
   role: Role;
   children: ReactNode;
   topSlot?: ReactNode;
+  sidebarTopSlot?: ReactNode;
   menuButtonClassName?: string;
   sheetContentClassName?: string;
   sidebarClassName?: string;
@@ -22,6 +23,7 @@ export function AdminLayoutShell({
   role,
   children,
   topSlot,
+  sidebarTopSlot,
   menuButtonClassName,
   sheetContentClassName = "w-[300px] p-0",
   sidebarClassName = "hidden w-64 border-r bg-gray-50/40 dark:bg-gray-900 md:block",
@@ -37,6 +39,7 @@ export function AdminLayoutShell({
         </SheetTrigger>
         <SheetContent side="left" className={sheetContentClassName}>
           <div className="flex h-full flex-col">
+            {sidebarTopSlot && <div className="border-b p-3">{sidebarTopSlot}</div>}
             <div className="flex-1 overflow-auto py-2">
               <AdminNavigation role={role} />
             </div>
@@ -47,6 +50,7 @@ export function AdminLayoutShell({
       {/* Sidebar */}
       <div className={sidebarClassName}>
         <div className="flex h-full flex-col">
+          {sidebarTopSlot && <div className="border-b p-3">{sidebarTopSlot}</div>}
           <div className="flex-1 overflow-auto py-2">
             <AdminNavigation role={role} />
           </div>

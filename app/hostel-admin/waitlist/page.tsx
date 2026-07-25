@@ -1,15 +1,25 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableRows } from "@/components/ui/table-state";
+import { StatusFilterSelect } from "@/components/common-in-admin/StatusFilterSelect";
 import { PageHeader } from "@/components/layout/page-header";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
+import { getWaitlistStatusColor } from "@/lib/status-colors";
 import { waitlistApi } from "@/services/api";
+
+const STATUS_OPTIONS = [
+  { value: "WAITING", label: "Waiting" },
+  { value: "NOTIFIED", label: "Notified" },
+  { value: "FULFILLED", label: "Fulfilled" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
 
 export default function WaitlistPage() {
   const { hostel } = useMyHostel();
@@ -17,13 +27,22 @@ export default function WaitlistPage() {
     hostel ? () => waitlistApi.getAll(hostel.id) : null,
     [hostel]
   );
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const filteredEntries = useMemo(() => {
+    if (statusFilter === "ALL") return entries ?? [];
+    return (entries ?? []).filter((e) => e.status === statusFilter);
+  }, [entries, statusFilter]);
 
   return (
     <div className="space-y-6">
       <PageHeader title="Waiting List" description="Students waiting for a room to open up" />
 
       <Card>
-        <CardHeader><CardTitle>Waiting Students</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <CardTitle>Waiting Students</CardTitle>
+          <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
+        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -37,7 +56,7 @@ export default function WaitlistPage() {
             <TableBody>
               <TableRows
                 loading={loading}
-                items={entries ?? []}
+                items={filteredEntries}
                 colSpan={4}
                 emptyTitle="No one is waiting"
                 emptyDescription="Students who join the waitlist for a full room type will show up here."
@@ -47,7 +66,7 @@ export default function WaitlistPage() {
                     <TableCell>{entry.student.name || entry.student.email}</TableCell>
                     <TableCell>{entry.roomType}</TableCell>
                     <TableCell>{new Date(entry.requestedAt).toLocaleDateString()}</TableCell>
-                    <TableCell><Badge variant={entry.status === "NOTIFIED" ? "default" : "secondary"}>{entry.status}</Badge></TableCell>
+                    <TableCell><Badge className={getWaitlistStatusColor(entry.status)}>{entry.status}</Badge></TableCell>
                   </TableRow>
                 )}
               </TableRows>

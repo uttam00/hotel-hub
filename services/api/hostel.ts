@@ -30,6 +30,21 @@ export const hostelApi = {
 
   getById: (id: string) => apiClient.get<any>(`/api/hostels/${id}`),
 
+  // Hostels the current hostel admin manages (or all hostels for a super
+  // admin) — unlike getAll, which hits the public /api/hostels browse
+  // endpoint and only ever returns ACTIVE hostels visible to everyone.
+  getMine: async (params?: { page?: number; limit?: number }): Promise<PaginatedResponse<any>> => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append("page", params.page.toString());
+    if (params?.limit) searchParams.append("limit", params.limit.toString());
+
+    const queryString = searchParams.toString();
+    const data = await apiClient.get<{ hostels: any[]; pagination: any }>(
+      `/api/hostel-admin/hostels${queryString ? `?${queryString}` : ""}`
+    );
+    return { data: data.hostels, pagination: data.pagination };
+  },
+
   create: (hostelData: {
     name: string;
     description: string;

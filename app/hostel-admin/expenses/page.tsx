@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -16,13 +17,16 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableRows } from "@/components/ui/table-state";
+import { StatusFilterSelect } from "@/components/common-in-admin/StatusFilterSelect";
 import { PageHeader } from "@/components/layout/page-header";
 import { Plus } from "lucide-react";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
+import { getExpenseCategoryColor } from "@/lib/status-colors";
 import { expenseApi } from "@/services/api";
 
 const CATEGORIES = ["UTILITIES", "SALARY", "MAINTENANCE", "SUPPLIES", "OTHER"];
+const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ value: c, label: c.charAt(0) + c.slice(1).toLowerCase() }));
 
 export default function ExpensesPage() {
   const { hostel } = useMyHostel();
@@ -32,6 +36,7 @@ export default function ExpensesPage() {
   );
   const expenses = data?.expenses ?? [];
   const summary = data?.summary ?? [];
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -58,6 +63,11 @@ export default function ExpensesPage() {
   };
 
   const total = summary.reduce((sum, s) => sum + s.total, 0);
+
+  const filteredExpenses = useMemo(() => {
+    if (categoryFilter === "ALL") return expenses;
+    return expenses.filter((e) => e.category === categoryFilter);
+  }, [expenses, categoryFilter]);
 
   return (
     <div className="space-y-6">
@@ -122,7 +132,15 @@ export default function ExpensesPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>All Expenses</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <CardTitle>All Expenses</CardTitle>
+          <StatusFilterSelect
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            options={CATEGORY_OPTIONS}
+            label="Categories"
+          />
+        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -136,7 +154,7 @@ export default function ExpensesPage() {
             <TableBody>
               <TableRows
                 loading={loading}
-                items={expenses}
+                items={filteredExpenses}
                 colSpan={4}
                 emptyTitle="No expenses recorded"
                 emptyDescription="Expenses you add will show up here."
@@ -144,7 +162,9 @@ export default function ExpensesPage() {
                 {(expense) => (
                   <TableRow key={expense.id}>
                     <TableCell>{new Date(expense.date).toLocaleDateString()}</TableCell>
-                    <TableCell>{expense.category}</TableCell>
+                    <TableCell>
+                      <Badge className={getExpenseCategoryColor(expense.category)}>{expense.category}</Badge>
+                    </TableCell>
                     <TableCell>{expense.description || "—"}</TableCell>
                     <TableCell className="text-right">₹{expense.amount.toFixed(2)}</TableCell>
                   </TableRow>

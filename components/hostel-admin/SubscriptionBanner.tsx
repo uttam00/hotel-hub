@@ -3,19 +3,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
+import { useMyHostel } from "@/hooks/use-my-hostel";
 import { subscriptionApi } from "@/services/api";
 
 export function SubscriptionBanner() {
+  const { hostel } = useMyHostel();
   const [isLimited, setIsLimited] = useState(false);
 
   useEffect(() => {
+    if (!hostel) return;
     subscriptionApi
-      .get()
+      .get(hostel.id)
       .then((data) => setIsLimited(data.accessLevel === "LIMITED"))
       .catch(() => {
         // No hostel yet, or not reachable — say nothing rather than a false alarm.
       });
-  }, []);
+  }, [hostel]);
 
   if (!isLimited) return null;
 

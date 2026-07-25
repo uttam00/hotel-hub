@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +9,18 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableRows } from "@/components/ui/table-state";
+import { StatusFilterSelect } from "@/components/common-in-admin/StatusFilterSelect";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
 import { getBookingStatusColor } from "@/lib/status-colors";
 import { studentApi } from "@/services/api";
+
+const STATUS_OPTIONS = [
+  { value: "PENDING", label: "Pending" },
+  { value: "CONFIRMED", label: "Confirmed" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "COMPLETED", label: "Completed" },
+];
 
 export default function StudentsPage() {
   const { hostel } = useMyHostel();
@@ -19,14 +28,21 @@ export default function StudentsPage() {
     hostel ? () => studentApi.getAll(hostel.id) : null,
     [hostel]
   );
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const filteredStudents = useMemo(() => {
+    if (statusFilter === "ALL") return students ?? [];
+    return (students ?? []).filter((b) => b.status === statusFilter);
+  }, [students, statusFilter]);
 
   return (
     <div className="space-y-6">
       <PageHeader title="Students" description="Students with a booking at your hostel" />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle>All Students</CardTitle>
+          <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
         </CardHeader>
         <CardContent>
           <Table>
@@ -42,7 +58,7 @@ export default function StudentsPage() {
             <TableBody>
               <TableRows
                 loading={loading}
-                items={students ?? []}
+                items={filteredStudents}
                 colSpan={5}
                 emptyIcon={Users}
                 emptyTitle="No students yet"

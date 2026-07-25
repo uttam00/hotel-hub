@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma, Status } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { requireUser, authzErrorResponse } from "@/lib/authz";
+import { requireUser, requireHostelAccess, authzErrorResponse } from "@/lib/authz";
 import { createBookingSchema } from "@/lib/validation_schema";
 import { calculateBookingPrice } from "@/lib/pricing";
 import { requireFullAccess } from "@/lib/subscription";
@@ -14,6 +14,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
+    const hostelId = searchParams.get("hostelId");
     const limit = searchParams.get("limit")
       ? Number.parseInt(searchParams.get("limit") as string)
       : 10;
@@ -29,18 +30,26 @@ export async function GET(req: Request) {
       // Students can only see their own bookings
       where.userId = user.id;
     } else if (user.role === "HOSTEL_ADMIN") {
-      // Hostel admins can see bookings for their hostels
-      where.room = {
-        hostel: {
-          admins: {
-            some: {
-              id: user.id,
+      if (hostelId) {
+        // Scope to a single hostel — the admin picked one from the selector.
+        await requireHostelAccess(user.id, user.role, hostelId);
+        where.room = { hostelId };
+      } else {
+        // No hostel selected yet — fall back to every hostel this admin manages.
+        where.room = {
+          hostel: {
+            admins: {
+              some: {
+                id: user.id,
+              },
             },
           },
-        },
-      };
+        };
+      }
+    } else if (user.role === "SUPER_ADMIN" && hostelId) {
+      where.room = { hostelId };
     }
-    // Super admins can see all bookings
+    // Super admins with no hostelId can see all bookings
 
     // Add status filter if provided
     if (status) {

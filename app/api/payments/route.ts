@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireUser, authzErrorResponse } from "@/lib/authz";
+import { requireUser, requireHostelAccess, authzErrorResponse } from "@/lib/authz";
 import logger from "@/lib/logger";
 
 // GET payments for current user (role-aware). To create a payment, use
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
+    const hostelId = searchParams.get("hostelId");
     const limit = searchParams.get("limit")
       ? Number.parseInt(searchParams.get("limit") as string)
       : 20;
@@ -26,15 +27,24 @@ export async function GET(req: Request) {
     if (user.role === "STUDENT") {
       where.booking = { userId: user.id };
     } else if (user.role === "HOSTEL_ADMIN") {
-      where.booking = {
-        room: {
-          hostel: {
-            admins: { some: { id: user.id } },
+      if (hostelId) {
+        // Scope to a single hostel — the admin picked one from the selector.
+        await requireHostelAccess(user.id, user.role, hostelId);
+        where.booking = { room: { hostelId } };
+      } else {
+        // No hostel selected yet — fall back to every hostel this admin manages.
+        where.booking = {
+          room: {
+            hostel: {
+              admins: { some: { id: user.id } },
+            },
           },
-        },
-      };
+        };
+      }
+    } else if (user.role === "SUPER_ADMIN" && hostelId) {
+      where.booking = { room: { hostelId } };
     }
-    // SUPER_ADMIN sees all payments
+    // SUPER_ADMIN with no hostelId sees all payments
 
     if (status) {
       where.status = status;

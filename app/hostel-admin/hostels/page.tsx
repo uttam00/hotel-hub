@@ -15,7 +15,7 @@ export default function HostelsPage() {
   // Fetch hostels data
   const fetchHostels = async () => {
     try {
-      const response = await hostelApi.getAll();
+      const response = await hostelApi.getMine({ limit: 100 });
       setHostels(response.data);
     } catch (error) {
       toast.error("Failed to fetch hostels");

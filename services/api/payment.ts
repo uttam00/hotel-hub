@@ -1,11 +1,12 @@
 import { apiClient } from "./client";
 
 export const paymentApi = {
-  getAll: async (params?: { status?: string; page?: number; limit?: number }) => {
+  getAll: async (params?: { status?: string; page?: number; limit?: number; hostelId?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.append("status", params.status);
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.limit) searchParams.append("limit", params.limit.toString());
+    if (params?.hostelId) searchParams.append("hostelId", params.hostelId);
 
     const queryString = searchParams.toString();
     const data = await apiClient.get<{ payments?: any[] }>(

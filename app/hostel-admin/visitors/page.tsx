@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,11 +16,18 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableRows } from "@/components/ui/table-state";
+import { StatusFilterSelect } from "@/components/common-in-admin/StatusFilterSelect";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserPlus } from "lucide-react";
 import { useFetch } from "@/hooks/use-fetch";
 import { useMyHostel } from "@/hooks/use-my-hostel";
+import { getVisitorStatusColor } from "@/lib/status-colors";
 import { visitorApi } from "@/services/api";
+
+const STATUS_OPTIONS = [
+  { value: "ON_PREMISES", label: "On premises" },
+  { value: "CHECKED_OUT", label: "Checked out" },
+];
 
 export default function VisitorsPage() {
   const { hostel, loading: hostelLoading } = useMyHostel();
@@ -31,6 +38,14 @@ export default function VisitorsPage() {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", purpose: "", visitingStudentId: "" });
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const filteredVisitors = useMemo(() => {
+    if (statusFilter === "ALL") return visitors ?? [];
+    return (visitors ?? []).filter((v) =>
+      statusFilter === "ON_PREMISES" ? !v.checkOutAt : !!v.checkOutAt
+    );
+  }, [visitors, statusFilter]);
 
   const handleSubmit = async () => {
     if (!hostel) return;
@@ -107,8 +122,9 @@ export default function VisitorsPage() {
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle>Visitor Log</CardTitle>
+          <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
         </CardHeader>
         <CardContent>
           <Table>
@@ -125,7 +141,7 @@ export default function VisitorsPage() {
             <TableBody>
               <TableRows
                 loading={loading}
-                items={visitors ?? []}
+                items={filteredVisitors}
                 colSpan={6}
                 emptyTitle="No visitors yet"
                 emptyDescription="Visitors you log will show up here."
@@ -137,7 +153,7 @@ export default function VisitorsPage() {
                     <TableCell>{v.purpose}</TableCell>
                     <TableCell>{new Date(v.checkInAt).toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge variant={v.checkOutAt ? "secondary" : "default"}>
+                      <Badge className={getVisitorStatusColor(v.checkOutAt ? "CHECKED_OUT" : "ON_PREMISES")}>
                         {v.checkOutAt ? "Checked out" : "On premises"}
                       </Badge>
                     </TableCell>

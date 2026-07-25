@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +10,21 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableRows } from "@/components/ui/table-state";
+import { StatusFilterSelect } from "@/components/common-in-admin/StatusFilterSelect";
 import { PageHeader } from "@/components/layout/page-header";
 import { useMyHostel } from "@/hooks/use-my-hostel";
+import { getAttendanceStatusColor } from "@/lib/status-colors";
 import { attendanceApi, bookingApi } from "@/services/api";
 import type { AttendanceStatus } from "@/services/api/attendance";
 
 type StudentRow = { id: string; name: string | null; email: string | null };
+
+const STATUS_OPTIONS = [
+  { value: "PRESENT", label: "Present" },
+  { value: "ABSENT", label: "Absent" },
+  { value: "LEAVE", label: "Leave" },
+  { value: "NOT_MARKED", label: "Not marked" },
+];
 
 export default function AttendancePage() {
   const { hostel } = useMyHostel();
@@ -23,6 +32,7 @@ export default function AttendancePage() {
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [loading, setLoading] = useState(true);
   const [scanResult, setScanResult] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const scannerRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
@@ -30,7 +40,7 @@ export default function AttendancePage() {
     setLoading(true);
     try {
       const [bookingsRes, attendanceRes] = await Promise.all([
-        bookingApi.getAll({ limit: 100 }),
+        bookingApi.getAll({ limit: 100, hostelId: hostel.id }),
         attendanceApi.getAll(hostel.id),
       ]);
 
@@ -99,6 +109,12 @@ export default function AttendancePage() {
     };
   }, [hostel, fetchData]);
 
+  const filteredStudents = useMemo(() => {
+    if (statusFilter === "ALL") return students;
+    if (statusFilter === "NOT_MARKED") return students.filter((s) => !attendance[s.id]);
+    return students.filter((s) => attendance[s.id] === statusFilter);
+  }, [students, attendance, statusFilter]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -114,7 +130,10 @@ export default function AttendancePage() {
 
         <TabsContent value="manual" className="pt-4">
           <Card>
-            <CardHeader><CardTitle>Today&apos;s Students</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+              <CardTitle>Today&apos;s Students</CardTitle>
+              <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
+            </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
@@ -127,7 +146,7 @@ export default function AttendancePage() {
                 <TableBody>
                   <TableRows
                     loading={loading}
-                    items={students}
+                    items={filteredStudents}
                     colSpan={3}
                     emptyTitle="No active students"
                     emptyDescription="Students with an active booking will show up here."
@@ -137,7 +156,9 @@ export default function AttendancePage() {
                         <TableCell>{student.name || student.email}</TableCell>
                         <TableCell>
                           {attendance[student.id] ? (
-                            <Badge>{attendance[student.id]}</Badge>
+                            <Badge className={getAttendanceStatusColor(attendance[student.id])}>
+                              {attendance[student.id]}
+                            </Badge>
                           ) : (
                             <span className="text-muted-foreground text-sm">Not marked</span>
                           )}

@@ -17,6 +17,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { subscriptionApi } from "@/services/api";
 import { PageHeader } from "@/components/layout/page-header";
+import { useMyHostel } from "@/hooks/use-my-hostel";
 import { CheckCircle2 } from "lucide-react";
 
 const PLANS: { id: "MONTHLY" | "YEARLY"; label: string; price: string; blurb: string }[] = [
@@ -36,6 +37,7 @@ type SubscriptionData = {
 
 function BillingPageContent() {
   const searchParams = useSearchParams();
+  const { hostel, loading: hostelLoading } = useMyHostel();
   const [data, setData] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState<"MONTHLY" | "YEARLY" | null>(null);
@@ -47,9 +49,10 @@ function BillingPageContent() {
   }, [searchParams]);
 
   const fetchSubscription = async () => {
+    if (!hostel) return;
     try {
       setLoading(true);
-      const result = await subscriptionApi.get();
+      const result = await subscriptionApi.get(hostel.id);
       setData(result);
     } catch (error) {
       console.error("Error fetching subscription:", error);
@@ -60,12 +63,14 @@ function BillingPageContent() {
 
   useEffect(() => {
     fetchSubscription();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hostel]);
 
   const handleSubscribe = async (plan: "MONTHLY" | "YEARLY") => {
+    if (!hostel) return;
     setCheckingOut(plan);
     try {
-      const { url } = await subscriptionApi.checkout(plan);
+      const { url } = await subscriptionApi.checkout(plan, hostel.id);
       window.location.href = url;
     } catch (error) {
       console.error("Error starting checkout:", error);
@@ -74,7 +79,7 @@ function BillingPageContent() {
     }
   };
 
-  if (loading) {
+  if (hostelLoading || loading) {
     return <LoadingSpinner fullPage message="Loading billing details..." />;
   }
 

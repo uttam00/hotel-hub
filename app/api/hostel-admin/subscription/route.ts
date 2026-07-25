@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { requireRole, authzErrorResponse } from "@/lib/authz";
+import { requireRole, requireHostelAccess, authzErrorResponse } from "@/lib/authz";
 import { getHostelAccessLevel } from "@/lib/subscription";
 import { paymentProvider } from "@/lib/payments";
 
 // GET the current hostel admin's hostel, subscription, and access level.
-export async function GET() {
+// Accepts an optional ?hostelId= so the selected hostel (from the hostel
+// selector) is what billing reflects, not just whichever hostel is first.
+export async function GET(req: Request) {
   try {
     const user = await requireRole("HOSTEL_ADMIN");
+    const hostelId = new URL(req.url).searchParams.get("hostelId");
+
+    if (hostelId) await requireHostelAccess(user.id, user.role, hostelId);
 
     const hostel = await prisma.hostel.findFirst({
-      where: { admins: { some: { id: user.id } } },
+      where: hostelId
+        ? { id: hostelId }
+        : { admins: { some: { id: user.id } } },
       include: { subscription: true },
     });
 
@@ -36,6 +43,7 @@ export async function GET() {
 
 const checkoutSchema = z.object({
   plan: z.enum(["MONTHLY", "YEARLY"]),
+  hostelId: z.string().optional(),
 });
 
 // POST start (or renew) a subscription checkout for the admin's hostel.
@@ -43,15 +51,19 @@ export async function POST(req: Request) {
   try {
     const user = await requireRole("HOSTEL_ADMIN");
 
+    const { plan, hostelId } = checkoutSchema.parse(await req.json());
+
+    if (hostelId) await requireHostelAccess(user.id, user.role, hostelId);
+
     const hostel = await prisma.hostel.findFirst({
-      where: { admins: { some: { id: user.id } } },
+      where: hostelId
+        ? { id: hostelId }
+        : { admins: { some: { id: user.id } } },
     });
 
     if (!hostel) {
       return NextResponse.json({ error: "No hostel found for this admin" }, { status: 404 });
     }
-
-    const { plan } = checkoutSchema.parse(await req.json());
     const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
     const { url } = await paymentProvider.createSubscriptionCheckout({

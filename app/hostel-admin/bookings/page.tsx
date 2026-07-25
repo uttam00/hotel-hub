@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +17,20 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableRows } from "@/components/ui/table-state";
+import { StatusFilterSelect } from "@/components/common-in-admin/StatusFilterSelect";
 import { PageHeader } from "@/components/layout/page-header";
 import { bookingApi, roomApi } from "@/services/api";
 import type { HostelRoom } from "@/services/api/room";
 import { useMyHostel } from "@/hooks/use-my-hostel";
+import { getBookingStatusColor } from "@/lib/status-colors";
 import { BookingDetails } from "@/types";
+
+const STATUS_OPTIONS = [
+  { value: "PENDING", label: "Pending" },
+  { value: "CONFIRMED", label: "Confirmed" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "COMPLETED", label: "Completed" },
+];
 
 export default function HostelAdminBookingsPage() {
   const { hostel } = useMyHostel();
@@ -33,20 +42,27 @@ export default function HostelAdminBookingsPage() {
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [newCheckOut, setNewCheckOut] = useState("");
   const [busy, setBusy] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   const fetchBookings = useCallback(async () => {
+    if (!hostel) return;
     setLoading(true);
     try {
-      const res = await bookingApi.getAll({ limit: 100 });
+      const res = await bookingApi.getAll({ limit: 100, hostelId: hostel.id });
       setBookings(res.data || []);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hostel]);
 
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  const filteredBookings = useMemo(() => {
+    if (statusFilter === "ALL") return bookings;
+    return bookings.filter((b) => b.status === statusFilter);
+  }, [bookings, statusFilter]);
 
   useEffect(() => {
     if (!hostel) return;
@@ -93,8 +109,9 @@ export default function HostelAdminBookingsPage() {
       <PageHeader title="Bookings" description="Manage bookings, transfers, and renewals for your hostel" />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle>All Bookings</CardTitle>
+          <StatusFilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
         </CardHeader>
         <CardContent>
           <Table>
@@ -110,7 +127,7 @@ export default function HostelAdminBookingsPage() {
             <TableBody>
               <TableRows
                 loading={loading}
-                items={bookings}
+                items={filteredBookings}
                 colSpan={5}
                 emptyTitle="No bookings yet"
                 emptyDescription="Bookings for your hostel will show up here."
@@ -122,7 +139,7 @@ export default function HostelAdminBookingsPage() {
                     <TableCell>
                       {new Date(booking.checkIn).toLocaleDateString()} – {new Date(booking.checkOut).toLocaleDateString()}
                     </TableCell>
-                    <TableCell><Badge>{booking.status}</Badge></TableCell>
+                    <TableCell><Badge className={getBookingStatusColor(booking.status)}>{booking.status}</Badge></TableCell>
                     <TableCell className="text-right space-x-2">
                       {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
                         <>

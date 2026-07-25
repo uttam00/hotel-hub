@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import {
   Card,
   CardContent,
@@ -17,9 +18,13 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { paymentApi } from "@/services/api";
 import { Payment } from "@/types";
-import { getPaymentStatusColor } from "@/lib/status-colors";
+import { getPaymentStatusColor, OVERDUE_COLOR, PAYMENT_STATUS_CHART_COLORS } from "@/lib/status-colors";
 import { CreditCard, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+
+function isOverdue(payment: Payment) {
+  return payment.status === "PENDING" && !!payment.dueDate && new Date(payment.dueDate) < new Date();
+}
 
 function StudentPaymentsContent() {
   const { data: session, status } = useSession();
@@ -85,6 +90,15 @@ function StudentPaymentsContent() {
   const totalPaid = payments
     .filter((p) => p.status === "COMPLETED")
     .reduce((sum, p) => sum + p.amount, 0);
+  const pendingCount = payments.filter((p) => p.status === "PENDING").length;
+  const overdueCount = payments.filter(isOverdue).length;
+
+  const breakdown = ["COMPLETED", "PENDING", "FAILED", "REFUNDED"]
+    .map((status) => ({
+      status,
+      value: payments.filter((p) => p.status === status).reduce((sum, p) => sum + p.amount, 0),
+    }))
+    .filter((d) => d.value > 0);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -102,30 +116,70 @@ function StudentPaymentsContent() {
         </div>
       </div>
 
-      {/* Summary Card */}
+      {/* Summary */}
       <div className="grid gap-4 md:grid-cols-3 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Paid</CardDescription>
-            <CardTitle className="text-2xl text-green-600">
-              ₹{totalPaid.toFixed(2)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Transactions</CardDescription>
-            <CardTitle className="text-2xl">{payments.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Pending</CardDescription>
-            <CardTitle className="text-2xl text-yellow-600">
-              {payments.filter((p) => p.status === "PENDING").length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
+        <div className="grid gap-4 sm:grid-cols-3 md:col-span-2 md:grid-cols-1 lg:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Total Paid</CardDescription>
+              <CardTitle className="text-2xl text-green-600">
+                ₹{totalPaid.toFixed(2)}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Total Transactions</CardDescription>
+              <CardTitle className="text-2xl">{payments.length}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Pending</CardDescription>
+              <CardTitle className="text-2xl text-yellow-600">
+                {pendingCount}
+                {overdueCount > 0 && (
+                  <span className="ml-2 text-sm font-medium text-amber-600">
+                    ({overdueCount} overdue)
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {breakdown.length > 0 && (
+          <Card className="md:row-span-1">
+            <CardHeader className="pb-0">
+              <CardDescription>Breakdown by Status</CardDescription>
+            </CardHeader>
+            <CardContent className="h-40 px-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={breakdown}
+                    dataKey="value"
+                    nameKey="status"
+                    innerRadius="55%"
+                    outerRadius="80%"
+                    paddingAngle={2}
+                  >
+                    {breakdown.map((d) => (
+                      <Cell key={d.status} fill={PAYMENT_STATUS_CHART_COLORS[d.status] ?? "#9ca3af"} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={24}
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {payments.length === 0 ? (
@@ -143,10 +197,16 @@ function StudentPaymentsContent() {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {payments.map((payment) => (
+          {payments.map((payment) => {
+            const room = payment.booking?.room;
+            const hostelName = room?.hostel?.name;
+            const roomLabel = room ? `${room.roomType} — #${room.roomNumber}` : null;
+            const overdue = isOverdue(payment);
+
+            return (
             <Card
               key={payment.id}
-              className="hover:shadow-md transition-shadow"
+              className={`hover:shadow-md transition-shadow ${overdue ? "border-amber-300 dark:border-amber-800" : ""}`}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-4">
@@ -156,9 +216,10 @@ function StudentPaymentsContent() {
                     </div>
                     <div>
                       <p className="font-medium">
-                        Payment #{payment.id.slice(-8).toUpperCase()}
+                        {hostelName ? `${hostelName}${roomLabel ? ` — ${roomLabel}` : ""}` : `Payment #${payment.id.slice(-8).toUpperCase()}`}
                       </p>
                       <p className="text-sm text-muted-foreground">
+                        {hostelName ? `Payment #${payment.id.slice(-8).toUpperCase()} • ` : ""}
                         {payment.method || "Card Payment"} •{" "}
                         {new Date(payment.createdAt).toLocaleDateString(
                           "en-US",
@@ -179,8 +240,8 @@ function StudentPaymentsContent() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="flex flex-col items-end gap-1">
-                      <Badge className={getPaymentStatusColor(payment.status)}>
-                        {payment.status}
+                      <Badge className={overdue ? OVERDUE_COLOR : getPaymentStatusColor(payment.status)}>
+                        {overdue ? "Overdue" : payment.status}
                       </Badge>
                       <span className="font-semibold text-lg">
                         ₹{payment.amount.toFixed(2)}
@@ -206,7 +267,8 @@ function StudentPaymentsContent() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,5 +1,7 @@
 import { AdminLayoutShell } from "@/components/common-in-admin/AdminLayoutShell";
+import { HostelSelectorBar } from "@/components/hostel-admin/HostelSelectorBar";
 import { SubscriptionBanner } from "@/components/hostel-admin/SubscriptionBanner";
+import { HostelProvider } from "@/contexts/hostel-context";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -15,8 +17,14 @@ export default async function HostelAdminLayout({
   }
 
   return (
-    <AdminLayoutShell role={user.role} topSlot={<SubscriptionBanner />}>
-      {children}
-    </AdminLayoutShell>
+    <HostelProvider>
+      <AdminLayoutShell
+        role={user.role}
+        topSlot={<SubscriptionBanner />}
+        sidebarTopSlot={<HostelSelectorBar />}
+      >
+        {children}
+      </AdminLayoutShell>
+    </HostelProvider>
   );
 }
