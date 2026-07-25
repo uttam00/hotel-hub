@@ -1,9 +1,12 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { hostelApi } from "@/services/api";
 import { HostelDetails } from "@/types";
-import { Star } from "lucide-react";
+import { MapPin, Star } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import HostelMap from "@/components/hostel/HostelMap";
@@ -15,6 +18,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { NoticeBoard } from "@/components/hostel/NoticeBoard";
 import { JoinWaitlist } from "@/components/hostel/JoinWaitlist";
 import { getRoomStatusColor } from "@/lib/status-colors";
+import { ADDITIONAL_FACILITIES } from "@/lib/room-facilities";
 
 export default function HostelDetailPage() {
   const router = useRouter();
@@ -57,7 +61,7 @@ export default function HostelDetailPage() {
   if (error || !hostel) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
+        <Card className="p-8 text-center">
           <h1 className="text-2xl font-bold text-destructive">Error</h1>
           <p className="mt-2 text-muted-foreground">
             {error || "Hostel not found"}
@@ -65,7 +69,7 @@ export default function HostelDetailPage() {
           <Button onClick={() => router.push("/hostels")} className="mt-4">
             Back to Hostels
           </Button>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -80,12 +84,13 @@ export default function HostelDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="space-y-8">
+      <Card className="space-y-6 p-6 sm:p-8 lg:p-10">
         {/* Header with title and wishlist */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">{hostel.name}</h1>
-            <p className="mt-2 text-muted-foreground">
+            <p className="mt-2 flex items-center gap-1.5 text-muted-foreground">
+              <MapPin className="h-4 w-4 shrink-0" />
               {hostel.address}, {hostel.city}, {hostel.state} {hostel.zipCode}
             </p>
             {averageRating > 0 && (
@@ -107,24 +112,32 @@ export default function HostelDetailPage() {
 
         {/* Image Gallery */}
         {hostel.images && hostel.images.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Photos</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {hostel.images.map((image: string, index: number) => (
-                <div key={index} className="relative aspect-video">
-                  <Image
-                    src={image}
-                    alt={`${hostel.name} - Image ${index + 1}`}
-                    fill
-                    className="rounded-lg object-cover"
-                  />
-                </div>
-              ))}
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">Photos</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {hostel.images.map((image: string, index: number) => (
+                  <div
+                    key={index}
+                    className="relative aspect-video overflow-hidden rounded-2xl border border-border/40"
+                  >
+                    <Image
+                      src={image}
+                      alt={`${hostel.name} - Image ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
-        <div className="grid gap-8 md:grid-cols-2">
+        <Separator />
+
+        <div className="grid gap-6 md:grid-cols-2">
           <div>
             <h2 className="text-xl font-semibold">Description</h2>
             <p className="mt-2 text-muted-foreground">{hostel.description}</p>
@@ -132,34 +145,42 @@ export default function HostelDetailPage() {
 
           <div>
             <h2 className="text-xl font-semibold">Amenities</h2>
-            <ul className="mt-2 grid grid-cols-2 gap-2">
-              {hostel.amenities.map((amenity, index) => (
-                <li
-                  key={index}
-                  className="flex items-center gap-2 text-muted-foreground"
-                >
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  {amenity}
-                </li>
-              ))}
-            </ul>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {hostel.amenities.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No amenities listed.
+                </p>
+              ) : (
+                hostel.amenities.map((amenity, index) => (
+                  <Badge key={index} variant="secondary">
+                    {amenity}
+                  </Badge>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
         {hostel.latitude && hostel.longitude && (
-          <div>
-            <h2 className="text-xl font-semibold">Location</h2>
-            <div className="mt-4 rounded-lg overflow-hidden">
-              <HostelMap
-                name={hostel.name}
-                latitude={hostel.latitude}
-                longitude={hostel.longitude}
-              />
+          <>
+            <Separator />
+            <div>
+              <h2 className="text-xl font-semibold">Location</h2>
+              <div className="mt-4 overflow-hidden rounded-2xl border border-border/40">
+                <HostelMap
+                  name={hostel.name}
+                  latitude={hostel.latitude}
+                  longitude={hostel.longitude}
+                />
+              </div>
             </div>
-          </div>
+          </>
         )}
 
+        <Separator />
         <NoticeBoard hostelId={hostel.id} />
+
+        <Separator />
 
         {/* Available Rooms with Booking Dialog */}
         <div>
@@ -168,41 +189,77 @@ export default function HostelDetailPage() {
             <JoinWaitlist hostelId={hostel.id} />
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {hostel.rooms.map((room) => (
-              <div
-                key={room.id}
-                className="rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">
-                    {room.roomType === "CUSTOM" && room.customRoomType
-                      ? room.customRoomType
-                      : room.roomType}
-                  </h3>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${getRoomStatusColor(room.status)}`}
-                  >
-                    {room.status}
-                  </span>
+            {hostel.rooms.map((room) => {
+              const typeLabel =
+                room.roomType === "CUSTOM" && room.customRoomType
+                  ? room.customRoomType
+                  : room.roomType;
+              const title = room.roomName || typeLabel;
+              const facilityBadges = room.amenities
+                .map((key) => ADDITIONAL_FACILITIES.find((f) => f.key === key))
+                .filter((f): f is (typeof ADDITIONAL_FACILITIES)[number] => !!f);
+
+              return (
+                <div
+                  key={room.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-border/40 p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-semibold">{title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Room {room.roomNumber} · {room.capacity}{" "}
+                        {room.capacity === 1 ? "bed" : "beds"}
+                        {room.roomName ? ` · ${typeLabel}` : ""}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={getRoomStatusColor(room.status)}
+                    >
+                      {room.status}
+                    </Badge>
+                  </div>
+
+                  {room.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {room.description}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {room.hasAttachedBathroom && (
+                      <Badge variant="secondary">Attached Bathroom</Badge>
+                    )}
+                    {room.acType === "FAN_AC" && (
+                      <Badge variant="secondary">AC</Badge>
+                    )}
+                    {room.cupboardType === "INDIVIDUAL" && (
+                      <Badge variant="secondary">Individual Cupboard</Badge>
+                    )}
+                    {room.cupboardType === "SHARED" && (
+                      <Badge variant="secondary">Shared Cupboard</Badge>
+                    )}
+                    {facilityBadges.map((facility) => (
+                      <Badge key={facility.key} variant="secondary">
+                        {facility.label}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <div className="mt-auto flex items-center justify-between pt-2">
+                    <span className="text-lg font-bold">
+                      ${room.price}/month
+                    </span>
+                    <BookingDialog room={room} hostelName={hostel.name} />
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Room {room.roomNumber} · Capacity: {room.capacity}
-                </p>
-                {room.description && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {room.description}
-                  </p>
-                )}
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-lg font-bold">
-                    ${room.price}/month
-                  </span>
-                  <BookingDialog room={room} hostelName={hostel.name} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
+
+        <Separator />
 
         {/* Reviews Section */}
         <div>
@@ -214,12 +271,13 @@ export default function HostelDetailPage() {
           </div>
           <div className="mt-4 space-y-4">
             {hostel.reviews.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">
+              <p className="py-8 text-center text-muted-foreground">
                 No reviews yet. Be the first to review!
               </p>
             ) : (
-              hostel.reviews.map((review) => (
-                <div key={review.id} className="rounded-lg border p-4">
+              hostel.reviews.map((review, index) => (
+                <div key={review.id}>
+                  {index > 0 && <Separator className="mb-4" />}
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">
@@ -236,7 +294,7 @@ export default function HostelDetailPage() {
                           className={`h-4 w-4 ${
                             i < review.rating
                               ? "fill-yellow-400 text-yellow-400"
-                              : "text-gray-200"
+                              : "text-muted-foreground/30"
                           }`}
                         />
                       ))}
@@ -252,7 +310,7 @@ export default function HostelDetailPage() {
             )}
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

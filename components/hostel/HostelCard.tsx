@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Hostel } from "@/types";
 import { Building, MapPin, Star } from "lucide-react";
@@ -45,8 +46,11 @@ export default function HostelCard({ hostel }: HostelCardProps) {
             <Building className="h-12 w-12 text-muted-foreground/50" />
           </div>
         )}
+        <Badge className="absolute right-3 top-3 border-none bg-background/90 text-foreground shadow-sm backdrop-blur-sm">
+          From ${hostel.lowestPrice}/mo
+        </Badge>
       </div>
-      <CardHeader className="p-4">
+      <CardHeader className="p-4 pb-2">
         <CardTitle className="line-clamp-1 text-lg">{hostel.name}</CardTitle>
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="h-3.5 w-3.5" />
@@ -55,17 +59,21 @@ export default function HostelCard({ hostel }: HostelCardProps) {
           </span>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0 space-y-2">
-        <div className="flex items-center gap-1">
-          <Star className="h-4 w-4 fill-primary text-primary" />
-          <span className="text-sm">
-            {hostel.averageRating.toFixed(1)} ({hostel.reviewCount} reviews)
-          </span>
+      <CardContent className="p-4 pt-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Star className="h-4 w-4 fill-primary text-primary" />
+            <span className="text-sm font-medium">
+              {hostel.averageRating.toFixed(1)}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              ({hostel.reviewCount})
+            </span>
+          </div>
+          <Badge variant="secondary">
+            {hostel.availableRooms} {hostel.availableRooms === 1 ? "room" : "rooms"} left
+          </Badge>
         </div>
-        <p className="font-medium">From ${hostel.lowestPrice}/month</p>
-        <p className="text-sm text-muted-foreground">
-          {hostel.availableRooms} rooms available
-        </p>
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Link href={`/hostels/${hostel.id}`} className="w-full">

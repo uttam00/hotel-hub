@@ -21,7 +21,7 @@ export default async function LoginPage() {
         redirectPath = "/hostel-admin";
         break;
       case "STUDENT":
-        redirectPath = "/dashboard";
+        redirectPath = "/";
         break;
     }
 

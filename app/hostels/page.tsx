@@ -4,12 +4,7 @@ import type React from "react";
 
 import HostelCard from "@/components/hostel/HostelCard";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -123,9 +118,9 @@ export default function HostelsPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
-        <section className="w-full py-6 md:py-12">
+        <section className="w-full py-6 md:py-10">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col gap-4">
+            <Card className="space-y-6 p-6 sm:p-8 lg:p-10">
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">
                   Find Your Hostel
@@ -134,10 +129,8 @@ export default function HostelsPage() {
                   Browse through our collection of student hostels
                 </p>
               </div>
-              <form
-                onSubmit={handleSearch}
-                className="grid gap-4 md:grid-cols-4"
-              >
+
+              <form onSubmit={handleSearch} className="grid gap-4 md:grid-cols-4">
                 <div className="md:col-span-3">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex-1">
@@ -172,31 +165,38 @@ export default function HostelsPage() {
                   </Button>
                 </div>
               </form>
-              <Separator className="my-2" />
-              <div className="grid gap-6 md:grid-cols-4">
+
+              <Separator />
+
+              <div className="grid gap-8 md:grid-cols-4">
                 {/* Sidebar Filters */}
                 <div
-                  className={`space-y-4 ${
+                  className={`space-y-6 md:col-span-1 md:border-r md:border-border/40 md:pr-6 ${
                     showFilters ? "block" : "hidden md:block"
                   }`}
                 >
-                  {hasActiveFilters && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs gap-1"
-                      onClick={clearFilters}
-                    >
-                      <X className="h-3 w-3" />
-                      Clear all filters
-                    </Button>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Filters</h3>
+                    {hasActiveFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs gap-1"
+                        onClick={clearFilters}
+                      >
+                        <X className="h-3 w-3" />
+                        Clear
+                      </Button>
+                    )}
+                  </div>
 
                   <div>
-                    <h3 className="font-medium mb-2">Price Range</h3>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                      Price Range
+                    </h4>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <label htmlFor="min-price" className="text-sm">
+                        <label htmlFor="min-price" className="text-xs text-muted-foreground">
                           Min
                         </label>
                         <Input
@@ -211,7 +211,7 @@ export default function HostelsPage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label htmlFor="max-price" className="text-sm">
+                        <label htmlFor="max-price" className="text-xs text-muted-foreground">
                           Max
                         </label>
                         <Input
@@ -228,49 +228,30 @@ export default function HostelsPage() {
                     </div>
                   </div>
 
+                  <Separator />
+
                   <div>
-                    <h3 className="font-medium mb-2">Amenities</h3>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                      Amenities
+                    </h4>
                     <div className="space-y-2">
                       {amenitiesList.map((amenity) => (
-                        <div
+                        <label
                           key={amenity}
-                          className="flex items-center space-x-2"
+                          htmlFor={`amenity-${amenity}`}
+                          className="flex items-center gap-2 text-sm cursor-pointer"
                         >
                           <input
                             type="checkbox"
                             id={`amenity-${amenity}`}
-                            className="h-4 w-4 rounded border-gray-300"
+                            className="h-4 w-4 rounded border-border accent-primary"
                             checked={selectedAmenities.includes(amenity)}
                             onChange={() => toggleAmenity(amenity)}
                           />
-                          <label
-                            htmlFor={`amenity-${amenity}`}
-                            className="text-sm"
-                          >
-                            {amenity}
-                          </label>
-                        </div>
+                          {amenity}
+                        </label>
                       ))}
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-2">Sort By</h3>
-                    <Select value={sortBy} onValueChange={handleSort}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sort by" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="recommended">Recommended</SelectItem>
-                        <SelectItem value="price-low">
-                          Price: Low to High
-                        </SelectItem>
-                        <SelectItem value="price-high">
-                          Price: High to Low
-                        </SelectItem>
-                        <SelectItem value="rating">Rating</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
 
@@ -358,7 +339,7 @@ export default function HostelsPage() {
 
                       {/* Pagination */}
                       {totalPages > 1 && (
-                        <div className="flex justify-center gap-2 mt-8">
+                        <div className="flex justify-center gap-2 pt-2">
                           <Button
                             variant="outline"
                             onClick={() =>
@@ -402,7 +383,7 @@ export default function HostelsPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </section>
       </main>

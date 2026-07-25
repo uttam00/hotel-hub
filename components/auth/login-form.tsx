@@ -77,9 +77,10 @@ export function LoginForm() {
           phoneNumber: userData.phoneNumber ?? undefined,
         });
 
-        // Redirect based on role
+        // Redirect based on role — students land on the public home page,
+        // not their dashboard, and can navigate there themselves.
         if (userData.role === "STUDENT") {
-          router.push("/dashboard");
+          router.push("/");
         } else if (userData.role === "SUPER_ADMIN") {
           router.push("/super-admin");
         } else if (userData.role === "HOSTEL_ADMIN") {

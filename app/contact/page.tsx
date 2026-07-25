@@ -16,9 +16,9 @@ export default function ContactPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32">
+        <section className="w-full py-6 md:py-10 lg:py-14">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <Card className="flex flex-col items-center justify-center space-y-4 p-8 text-center sm:p-12">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">
                   Contact Us
@@ -27,8 +27,8 @@ export default function ContactPage() {
                   Have questions or feedback? We'd love to hear from you.
                 </p>
               </div>
-            </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-2 lg:gap-12">
+            </Card>
+            <div className="mx-auto grid max-w-5xl items-center gap-6 py-10 lg:grid-cols-2 lg:gap-12">
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
