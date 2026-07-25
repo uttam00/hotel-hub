@@ -138,7 +138,7 @@ async function handleBookingPaymentCheckout(session: Stripe.Checkout.Session) {
         .reduce((sum, p) => sum + p.amount, 0) + payment.amount;
 
     if (totalPaid >= booking.totalPrice) {
-      await tx.room.update({ where: { id: booking.roomId }, data: { isAvailable: false } });
+      await tx.room.update({ where: { id: booking.roomId }, data: { status: "OCCUPIED" } });
     }
 
     await tx.notification.create({

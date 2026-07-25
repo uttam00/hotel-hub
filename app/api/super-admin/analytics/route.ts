@@ -10,7 +10,7 @@ export async function GET() {
 
     const [totalRooms, occupiedRooms, bookingCounts, revenueTrend, activeSubscriptions] = await Promise.all([
       prisma.room.count(),
-      prisma.room.count({ where: { isAvailable: false } }),
+      prisma.room.count({ where: { status: "OCCUPIED" } }),
       prisma.booking.groupBy({ by: ["status"], _count: true }),
       getRevenueTrend({}),
       prisma.subscription.count({ where: { status: "ACTIVE", endDate: { gt: new Date() } } }),

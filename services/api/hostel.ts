@@ -53,7 +53,11 @@ export const hostelApi = {
     state: string;
     zipCode: string;
     country: string;
+    latitude?: number;
+    longitude?: number;
     amenities: string[];
+    images: string[];
+    status?: Hostel["status"];
   }) => apiClient.post<any>("/api/hostels", hostelData),
 
   update: (
@@ -66,7 +70,10 @@ export const hostelApi = {
       state: string;
       zipCode: string;
       country: string;
+      latitude?: number;
+      longitude?: number;
       amenities: string[];
+      images: string[];
       status: Hostel["status"];
     }>
   ) => apiClient.put<any>(`/api/hostels/${id}`, hostelData),

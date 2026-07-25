@@ -22,7 +22,7 @@ export async function GET(req: Request) {
                 id: true,
                 roomType: true,
                 price: true,
-                isAvailable: true,
+                status: true,
               },
             },
             reviews: {
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
           ...w.hostel,
           averageRating,
           reviewCount: w.hostel.reviews.length,
-          availableRooms: w.hostel.rooms.filter((r: any) => r.isAvailable).length,
+          availableRooms: w.hostel.rooms.filter((r: any) => r.status === "AVAILABLE").length,
           lowestPrice:
             w.hostel.rooms.length > 0
               ? Math.min(...w.hostel.rooms.map((r: any) => r.price))

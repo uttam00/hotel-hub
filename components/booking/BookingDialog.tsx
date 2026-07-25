@@ -25,7 +25,7 @@ interface BookingDialogProps {
     roomNumber: string;
     roomType: string;
     price: number;
-    isAvailable: boolean;
+    status: string;
   };
   hostelName: string;
 }
@@ -80,8 +80,8 @@ export function BookingDialog({ room, hostelName }: BookingDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={!room.isAvailable} size="sm">
-          {room.isAvailable ? "Book Now" : "Unavailable"}
+        <Button disabled={room.status !== "AVAILABLE"} size="sm">
+          {room.status === "AVAILABLE" ? "Book Now" : "Unavailable"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">

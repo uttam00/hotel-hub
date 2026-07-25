@@ -14,6 +14,7 @@ import { WishlistButton } from "@/components/wishlist/WishlistButton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { NoticeBoard } from "@/components/hostel/NoticeBoard";
 import { JoinWaitlist } from "@/components/hostel/JoinWaitlist";
+import { getRoomStatusColor } from "@/lib/status-colors";
 
 export default function HostelDetailPage() {
   const router = useRouter();
@@ -173,15 +174,15 @@ export default function HostelDetailPage() {
                 className="rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{room.roomType}</h3>
+                  <h3 className="font-semibold">
+                    {room.roomType === "CUSTOM" && room.customRoomType
+                      ? room.customRoomType
+                      : room.roomType}
+                  </h3>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      room.isAvailable
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
+                    className={`text-xs px-2 py-0.5 rounded-full ${getRoomStatusColor(room.status)}`}
                   >
-                    {room.isAvailable ? "Available" : "Occupied"}
+                    {room.status}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">

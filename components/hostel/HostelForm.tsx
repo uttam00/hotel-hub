@@ -1,5 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -10,54 +15,81 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { HostelDetails } from "@/types";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
 import ImageUpload from "../ImageUpload";
 import LocationPicker from "@/components/LocationPicker";
-import { HostelStatus } from "@prisma/client";
-import { hostelSchema } from "@/lib/validation_schema";
+import { hostelFormSchema } from "@/lib/validation_schema";
+import { roomApi } from "@/services/api/room";
+import { toast } from "sonner";
+import { RoomCard } from "./RoomCard";
+import { RoomsSummary } from "./RoomsSummary";
 
-type HostelFormData = Omit<
-  HostelDetails,
-  "id" | "rooms" | "reviews" | "createdAt" | "updatedAt"
->;
+export type HostelFormValues = z.infer<typeof hostelFormSchema>;
+export type RoomFormValues = HostelFormValues["rooms"][number];
 
-type HostelFormValues = {
-  name: string;
-  description: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  latitude?: number;
-  longitude?: number;
-  amenities: string[];
-  images: string[];
-  country: string;
-  status: HostelStatus;
-  averageRating: number;
-  reviewCount: number;
-  availableRooms: number;
-  lowestPrice: number;
-  totalRooms: number;
-};
+// The saved hostel this form needs back from its caller — just enough to
+// know where to point the follow-up room create/update/delete calls.
+type SavedHostel = { id: string };
 
 interface HostelFormProps {
-  initialData?: HostelFormData;
-  onSubmit: (data: HostelFormData) => Promise<void>;
+  initialData?: HostelDetails;
+  onSubmit: (data: Omit<HostelFormValues, "rooms">) => Promise<SavedHostel>;
+  // Fired only after the hostel AND its rooms have both saved successfully —
+  // wrapper pages should do their redirect/success toast here instead of
+  // inside onSubmit, since a room sync failure should keep the admin on the
+  // page to retry.
+  onSuccess?: () => void;
   isLoading?: boolean;
+}
+
+function toRoomFormValues(room: HostelDetails["rooms"][number]): RoomFormValues {
+  return {
+    id: room.id,
+    roomNumber: room.roomNumber,
+    roomName: room.roomName ?? "",
+    roomType: room.roomType,
+    customRoomType: room.customRoomType ?? "",
+    description: room.description ?? "",
+    price: room.price,
+    capacity: room.capacity,
+    status: room.status,
+    hasAttachedBathroom: room.hasAttachedBathroom,
+    acType: room.acType,
+    cupboardType: room.cupboardType,
+    amenities: room.amenities,
+  };
+}
+
+function emptyRoom(): RoomFormValues {
+  return {
+    roomNumber: "",
+    roomName: "",
+    roomType: "SINGLE",
+    customRoomType: "",
+    description: "",
+    price: 0,
+    capacity: 1,
+    status: "AVAILABLE",
+    hasAttachedBathroom: false,
+    acType: "FAN_ONLY",
+    cupboardType: "NONE",
+    amenities: [],
+  };
 }
 
 export default function HostelForm({
   initialData,
   onSubmit,
+  onSuccess,
   isLoading = false,
 }: HostelFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<string | null>(null);
+
   const form = useForm<HostelFormValues>({
-    resolver: zodResolver(hostelSchema),
+    resolver: zodResolver(hostelFormSchema),
     defaultValues: {
       name: initialData?.name || "",
       description: initialData?.description || "",
@@ -65,19 +97,22 @@ export default function HostelForm({
       city: initialData?.city || "",
       state: initialData?.state || "",
       zipCode: initialData?.zipCode || "",
-      latitude: initialData?.latitude || 0,
-      longitude: initialData?.longitude || 0,
+      latitude: initialData?.latitude ?? undefined,
+      longitude: initialData?.longitude ?? undefined,
       amenities: initialData?.amenities || [],
       images: initialData?.images || [],
       country: initialData?.country || "USA",
-      status: initialData?.status ?? HostelStatus.ACTIVE,
-      averageRating: initialData?.averageRating || 0,
-      reviewCount: initialData?.reviewCount || 0,
-      availableRooms: initialData?.availableRooms || 0,
-      lowestPrice: initialData?.lowestPrice || 0,
-      totalRooms: initialData?.totalRooms || 1,
+      status: initialData?.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+      rooms: initialData?.rooms?.map(toRoomFormValues) || [],
     },
   });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "rooms",
+  });
+
+  const watchedRooms = useWatch({ control: form.control, name: "rooms" }) || [];
 
   const handleLocationSelect = (location: {
     address: string;
@@ -97,28 +132,69 @@ export default function HostelForm({
     form.setValue("longitude", location.longitude);
   };
 
-  const handleSubmit = async (data: HostelFormValues) => {
-    const formattedData: HostelFormData = {
-      name: data.name,
-      description: data.description,
-      address: data.address,
-      city: data.city,
-      state: data.state,
-      zipCode: data.zipCode,
-      country: data.country,
-      latitude: data.latitude ? Number(data.latitude) : null,
-      longitude: data.longitude ? Number(data.longitude) : null,
-      amenities: data.amenities,
-      images: data.images,
-      status: data.status,
-      averageRating: data.averageRating,
-      reviewCount: data.reviewCount,
-      availableRooms: data.availableRooms,
-      lowestPrice: data.lowestPrice,
-      totalRooms: data.totalRooms,
-    };
-    console.log("Formatted data:", formattedData);
-    await onSubmit(formattedData);
+  const handleSubmit = async (values: HostelFormValues) => {
+    const { rooms, ...hostelFields } = values;
+
+    setIsSubmitting(true);
+    setSubmitPhase("Saving hostel details...");
+
+    let savedHostel: SavedHostel;
+    try {
+      savedHostel = await onSubmit({
+        ...hostelFields,
+        latitude: hostelFields.latitude || undefined,
+        longitude: hostelFields.longitude || undefined,
+      });
+    } catch {
+      // The wrapper page's onSubmit already surfaced its own error toast.
+      setIsSubmitting(false);
+      setSubmitPhase(null);
+      return;
+    }
+
+    const hostelId = savedHostel.id;
+
+    setSubmitPhase("Syncing rooms...");
+    const originalRooms = initialData?.rooms ?? [];
+    const currentIds = new Set(rooms.filter((r) => r.id).map((r) => r.id));
+    const toDelete = originalRooms.filter((r) => !currentIds.has(r.id));
+    const toUpdate = rooms.filter((r) => r.id);
+    const toCreate = rooms.filter((r) => !r.id);
+
+    const errors: string[] = [];
+
+    for (const room of toDelete) {
+      try {
+        await roomApi.delete(hostelId, room.id);
+      } catch (e) {
+        errors.push(`Room ${room.roomNumber}: ${e instanceof Error ? e.message : "failed to delete"}`);
+      }
+    }
+    for (const room of toUpdate) {
+      const { id, ...data } = room;
+      try {
+        await roomApi.update(hostelId, id!, data);
+      } catch (e) {
+        errors.push(`Room ${room.roomNumber}: ${e instanceof Error ? e.message : "failed to update"}`);
+      }
+    }
+    for (const room of toCreate) {
+      try {
+        await roomApi.create(hostelId, room);
+      } catch (e) {
+        errors.push(`Room ${room.roomNumber || "(new)"}: ${e instanceof Error ? e.message : "failed to create"}`);
+      }
+    }
+
+    setIsSubmitting(false);
+    setSubmitPhase(null);
+
+    if (errors.length) {
+      toast.error(`Hostel saved, but ${errors.length} room(s) failed: ${errors.join("; ")}`);
+      return;
+    }
+
+    onSuccess?.();
   };
 
   return (
@@ -126,9 +202,7 @@ export default function HostelForm({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          form.handleSubmit(handleSubmit, (errors) => {
-            console.log("Form validation failed:", errors);
-          })(e);
+          form.handleSubmit(handleSubmit)(e);
         }}
         className="space-y-8"
       >
@@ -137,7 +211,7 @@ export default function HostelForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Hostel Name</FormLabel>
               <FormControl>
                 <Input {...field} placeholder="Enter hostel name" />
               </FormControl>
@@ -179,7 +253,7 @@ export default function HostelForm({
           name="amenities"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Amenities</FormLabel>
+              <FormLabel>Hostel Amenities</FormLabel>
               <FormControl>
                 <Input
                   {...field}
@@ -225,42 +299,62 @@ export default function HostelForm({
           name="status"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Status</FormLabel>
-              <FormControl>
-                <select
-                  {...field}
-                  className="w-full rounded-md border border-gray-300 p-2"
-                >
-                  <option value={HostelStatus.ACTIVE}>Active</option>
-                  <option value={HostelStatus.INACTIVE}>Inactive</option>
-                </select>
-              </FormControl>
+              <FormLabel>Hostel Status</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="totalRooms"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Total Rooms</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min={1}
-                  {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Rooms</h2>
+            <p className="text-sm text-muted-foreground">
+              Add, edit, or remove rooms for this hostel — there is no limit on how many you can add.
+            </p>
+          </div>
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save"}
+          <RoomsSummary rooms={watchedRooms as RoomFormValues[]} />
+
+          <div className="space-y-3">
+            {fields.map((field, index) => (
+              <RoomCard
+                key={field.id}
+                form={form}
+                index={index}
+                onRemove={() => remove(index)}
+                // useFieldArray's own `field.id` is a synthetic React key,
+                // not our room's real database id (which is shadowed by it
+                // in `fields`) — read the true value from form state: rooms
+                // without a persisted id are new, so they start expanded.
+                defaultOpen={!form.getValues(`rooms.${index}.id`)}
+              />
+            ))}
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => append(emptyRoom())}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Room
+          </Button>
+        </div>
+
+        <Button type="submit" disabled={isLoading || isSubmitting}>
+          {isSubmitting ? submitPhase ?? "Saving..." : "Save"}
         </Button>
       </form>
     </Form>

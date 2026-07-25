@@ -31,13 +31,17 @@ export default function EditHostelPage() {
 
   const handleSubmit = async (data: any) => {
     try {
-      await hostelApi.update(params.id, data);
-      toast.success("Hostel updated successfully");
-      router.push("/hostel-admin/hostels");
+      return await hostelApi.update(params.id, data);
     } catch (error) {
       console.error("Error updating hostel:", error);
       toast.error("Failed to update hostel");
+      throw error;
     }
+  };
+
+  const handleSuccess = () => {
+    toast.success("Hostel updated successfully");
+    router.push("/hostel-admin/hostels");
   };
 
   if (isLoading) {
@@ -51,7 +55,7 @@ export default function EditHostelPage() {
   return (
     <div className="container mx-auto pb-10">
       <h1 className="text-2xl font-bold mb-8">Edit Hostel</h1>
-      <HostelForm initialData={hostel} onSubmit={handleSubmit} />
+      <HostelForm initialData={hostel} onSubmit={handleSubmit} onSuccess={handleSuccess} />
     </div>
   );
 }

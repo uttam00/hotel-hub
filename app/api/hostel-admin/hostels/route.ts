@@ -51,7 +51,7 @@ export async function GET(req: Request) {
             roomNumber: true,
             roomType: true,
             price: true,
-            isAvailable: true,
+            status: true,
           },
         },
         reviews: {
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
       const averageRating =
         hostel.reviews.length > 0 ? totalRatings / hostel.reviews.length : 0;
       const availableRooms = hostel.rooms.filter(
-        (room) => room.isAvailable
+        (room) => room.status === "AVAILABLE"
       ).length;
 
       return {

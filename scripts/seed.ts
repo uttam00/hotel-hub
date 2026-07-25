@@ -81,7 +81,7 @@ async function main() {
           description: `A ${roomTypes[typeIndex].toLowerCase()} room with basic amenities`,
           price: roomPrices[typeIndex],
           capacity: roomCapacities[typeIndex],
-          isAvailable: i % 4 !== 0, // Some rooms are unavailable
+          status: i % 4 !== 0 ? "AVAILABLE" : "OCCUPIED", // Some rooms are unavailable
           amenities: ["Bed", "Desk", "Wardrobe", "Wi-Fi"],
           hostelId: hostel.id,
         },
@@ -93,7 +93,7 @@ async function main() {
     const room = await prisma.room.findFirst({
       where: {
         hostelId: hostel.id,
-        isAvailable: true,
+        status: "AVAILABLE",
       },
     })
 
@@ -124,7 +124,7 @@ async function main() {
       // Mark room as unavailable
       await prisma.room.update({
         where: { id: room.id },
-        data: { isAvailable: false },
+        data: { status: "OCCUPIED" },
       })
       console.log("Updated room availability")
 

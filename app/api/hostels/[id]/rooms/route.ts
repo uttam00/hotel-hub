@@ -14,12 +14,12 @@ export async function GET(
   try {
     const { searchParams } = new URL(req.url);
     const roomType = searchParams.get("roomType");
-    const available = searchParams.get("available") === "true";
+    const status = searchParams.get("status");
 
     const where = {
       hostelId: params.id,
       ...(roomType ? { roomType: roomType as any } : {}),
-      ...(searchParams.has("available") ? { isAvailable: available } : {}),
+      ...(status ? { status: status as any } : {}),
     };
 
     const rooms = await prisma.room.findMany({

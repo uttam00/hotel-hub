@@ -41,7 +41,7 @@ export async function POST(req: Request, { params: __params }: { params: Promise
         { status: 400 }
       );
     }
-    if (!newRoom.isAvailable) {
+    if (newRoom.status !== "AVAILABLE") {
       return NextResponse.json({ error: "The new room is not available" }, { status: 400 });
     }
 

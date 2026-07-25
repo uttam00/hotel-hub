@@ -97,19 +97,24 @@ model Hostel {
 }
 
 model Room {
-  id          String    @id @default(cuid())
-  roomNumber  String
-  roomType    RoomType
-  description String?
-  price       Float
-  capacity    Int
-  isAvailable Boolean   @default(true)
-  amenities   String[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  hostelId    String
-  bookings    Booking[]
-  hostel      Hostel    @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  id                  String       @id @default(cuid())
+  roomNumber          String
+  roomName            String?
+  roomType            RoomType
+  customRoomType      String?
+  description         String?
+  price               Float
+  capacity            Int
+  status              RoomStatus   @default(AVAILABLE)
+  hasAttachedBathroom Boolean      @default(false)
+  acType              ACType       @default(FAN_ONLY)
+  cupboardType        CupboardType @default(NONE)
+  amenities           String[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  hostelId            String
+  bookings            Booking[]
+  hostel              Hostel       @relation(fields: [hostelId], references: [id], onDelete: Cascade)
 }
 
 model Booking {
@@ -317,6 +322,25 @@ enum RoomType {
   DOUBLE
   TRIPLE
   DORMITORY
+  CUSTOM
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  INACTIVE
+}
+
+enum ACType {
+  FAN_ONLY
+  FAN_AC
+}
+
+enum CupboardType {
+  INDIVIDUAL
+  SHARED
+  NONE
 }
 
 enum Status {

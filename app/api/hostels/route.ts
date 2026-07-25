@@ -44,7 +44,7 @@ export async function GET(req: Request) {
         ? { amenities: { hasEvery: amenities } }
         : {}),
       ...(availability === "available"
-        ? { rooms: { some: { isAvailable: true } } }
+        ? { rooms: { some: { status: "AVAILABLE" as any } } }
         : {}),
     };
 
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
             id: true,
             roomType: true,
             price: true,
-            isAvailable: true,
+            status: true,
           },
         },
         reviews: {
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
       const averageRating =
         hostel.reviews.length > 0 ? totalRatings / hostel.reviews.length : 0;
       const availableRooms = hostel.rooms.filter(
-        (room: { isAvailable: boolean }) => room.isAvailable
+        (room: { status: string }) => room.status === "AVAILABLE"
       ).length;
       const lowestPrice =
         hostel.rooms.length > 0

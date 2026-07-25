@@ -25,7 +25,7 @@ export async function GET(req: Request) {
       prisma.booking.count({ where: { room: { hostelId } } }),
       prisma.payment.count({ where: { booking: { room: { hostelId } } } }),
       prisma.room.count({ where: { hostelId } }),
-      prisma.room.count({ where: { hostelId, isAvailable: true } }),
+      prisma.room.count({ where: { hostelId, status: "AVAILABLE" } }),
     ]);
 
     return NextResponse.json({

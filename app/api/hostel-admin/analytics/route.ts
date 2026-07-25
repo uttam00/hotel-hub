@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
     const [totalRooms, occupiedRooms, bookingCounts, revenueTrend] = await Promise.all([
       prisma.room.count({ where: { hostelId } }),
-      prisma.room.count({ where: { hostelId, isAvailable: false } }),
+      prisma.room.count({ where: { hostelId, status: "OCCUPIED" } }),
       prisma.booking.groupBy({
         by: ["status"],
         where: { room: { hostelId } },

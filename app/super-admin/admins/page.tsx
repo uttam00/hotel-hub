@@ -110,8 +110,8 @@ export default function AdminsPage() {
       const response = await hostelApi.getAll();
       setHostels(
         response.data.filter(
-          (hostel: Hostel) => hostel.status === HostelStatus.ACTIVE
-        )
+          (hostel: Hostel) => hostel.status === HostelStatus.ACTIVE,
+        ),
       );
     } catch (error) {
       toast.error("Failed to fetch hostels");
@@ -132,7 +132,9 @@ export default function AdminsPage() {
       form.reset();
       fetchAdmins();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong",
+      );
     }
   };
 
@@ -148,7 +150,9 @@ export default function AdminsPage() {
       assignForm.reset();
       fetchAdmins();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong",
+      );
     } finally {
       setAssignHostelLoading(false);
     }
@@ -163,13 +167,15 @@ export default function AdminsPage() {
       setAdminToDelete(null);
       fetchAdmins();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong",
+      );
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Manage Hostel Admins</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -350,7 +356,7 @@ export default function AdminsPage() {
                             <Command>
                               {hostels.map((hostel) => {
                                 const isChecked = field.value?.includes(
-                                  hostel.id
+                                  hostel.id,
                                 );
                                 return (
                                   <CommandItem
@@ -358,7 +364,7 @@ export default function AdminsPage() {
                                     onSelect={() => {
                                       const newValue = isChecked
                                         ? field.value?.filter(
-                                            (id) => id !== hostel.id
+                                            (id) => id !== hostel.id,
                                           )
                                         : [...(field.value || []), hostel.id];
                                       field.onChange(newValue);
@@ -379,7 +385,7 @@ export default function AdminsPage() {
                         <div className="flex flex-wrap gap-2">
                           {field.value?.map((hostelId) => {
                             const hostel = hostels.find(
-                              (h) => h.id === hostelId
+                              (h) => h.id === hostelId,
                             );
                             return (
                               hostel && (

@@ -3,9 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
-import { RoomType, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
-import { hostelSchema, hostelUpdateSchema } from "@/lib/validation_schema";
+import { createHostelSchema, hostelUpdateSchema } from "@/lib/validation_schema";
 
 // Define types for the hostel with included relations
 type HostelWithRelations = {
@@ -34,7 +34,7 @@ type HostelWithRelations = {
     roomNumber: string;
     roomType: string;
     price: number;
-    isAvailable: boolean;
+    status: string;
   }>;
   reviews: Array<{
     id: string;
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
             roomNumber: true,
             roomType: true,
             price: true,
-            isAvailable: true,
+            status: true,
           },
         },
         reviews: {
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
       const averageRating =
         hostel.reviews.length > 0 ? totalRatings / hostel.reviews.length : 0;
       const availableRooms = hostel.rooms.filter(
-        (room) => room.isAvailable
+        (room) => room.status === "AVAILABLE"
       ).length;
 
       return {
@@ -145,12 +145,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const validatedData = hostelSchema.parse(body);
+    const { adminId, ...hostelBody } = body;
+    const hostelData = createHostelSchema.parse(hostelBody);
 
     // If adminId is provided, check if admin exists and has no hostels
-    if (validatedData.adminId) {
+    if (adminId) {
       const admin = await prisma.user.findUnique({
-        where: { id: validatedData.adminId },
+        where: { id: adminId },
         include: {
           hostels: true,
         },
@@ -171,8 +172,9 @@ export async function POST(req: Request) {
       }
     }
 
-    const { totalRooms, adminId, ...hostelData } = validatedData;
-
+    // Rooms are no longer auto-generated here — the super-admin adds them
+    // explicitly through the hostel form's room management UI after the
+    // hostel is created.
     const hostel = await prisma.hostel.create({
       data: {
         ...hostelData,
@@ -181,15 +183,6 @@ export async function POST(req: Request) {
               connect: { id: adminId },
             }
           : undefined,
-        rooms: {
-          create: Array.from({ length: totalRooms }, (_, i) => ({
-            roomNumber: `Room ${i + 1}`,
-            capacity: 2,
-            roomType: RoomType.DOUBLE,
-            price: 1000,
-            amenities: ["WiFi", "Desk", "Wardrobe"],
-          })),
-        },
       },
       include: {
         admins: {

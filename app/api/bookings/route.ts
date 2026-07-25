@@ -162,7 +162,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }
 
-    if (!room.isAvailable) {
+    if (room.status !== "AVAILABLE") {
       return NextResponse.json(
         { error: "Room is not available" },
         { status: 400 }

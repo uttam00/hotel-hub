@@ -13,18 +13,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     const hostel = await prisma.hostel.findUnique({
       where: { id: params.id },
       include: {
-        rooms: {
-          select: {
-            id: true,
-            roomNumber: true,
-            roomType: true,
-            description: true,
-            price: true,
-            capacity: true,
-            isAvailable: true,
-            amenities: true,
-          },
-        },
+        rooms: true,
         reviews: {
           include: {
             user: {
@@ -51,10 +40,26 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     const averageRating =
       hostel.reviews.length > 0 ? totalRatings / hostel.reviews.length : 0;
 
+    // Room stats, computed the same way the redesigned HostelForm computes
+    // them live client-side from the in-form rooms array.
+    const activeRooms = hostel.rooms.filter((r) => r.status !== "INACTIVE").length;
+    const totalCapacity = hostel.rooms.reduce((sum, r) => sum + r.capacity, 0);
+    const availableBeds = hostel.rooms
+      .filter((r) => r.status === "AVAILABLE")
+      .reduce((sum, r) => sum + r.capacity, 0);
+    const occupiedBeds = hostel.rooms
+      .filter((r) => r.status === "OCCUPIED")
+      .reduce((sum, r) => sum + r.capacity, 0);
+
     return NextResponse.json({
       ...hostel,
       averageRating,
       reviewCount: hostel.reviews.length,
+      totalRooms: hostel.rooms.length,
+      activeRooms,
+      totalCapacity,
+      availableBeds,
+      occupiedBeds,
     });
   } catch (error) {
     console.error("Error fetching hostel:", error);

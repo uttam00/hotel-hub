@@ -171,7 +171,7 @@ export default function HostelAdminBookingsPage() {
               <SelectTrigger><SelectValue placeholder="Select a room" /></SelectTrigger>
               <SelectContent>
                 {rooms
-                  .filter((r) => r.isAvailable && r.id !== transferTarget?.room.id)
+                  .filter((r) => r.status === "AVAILABLE" && r.id !== transferTarget?.room.id)
                   .map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.roomType} — #{r.roomNumber}

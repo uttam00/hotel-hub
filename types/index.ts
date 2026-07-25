@@ -6,6 +6,10 @@ export enum HostelStatus {
   PENDING_VERIFICATION = "PENDING_VERIFICATION",
 }
 
+export type RoomStatus = "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "INACTIVE";
+export type ACType = "FAN_ONLY" | "FAN_AC";
+export type CupboardType = "INDIVIDUAL" | "SHARED" | "NONE";
+
 export type User = {
   id: string;
   name?: string;
@@ -41,7 +45,7 @@ export type Hostel = {
     id: string;
     roomType: string;
     price: number;
-    isAvailable: boolean;
+    status: RoomStatus;
   }[];
   admins?: User[];
   subscription?: Subscription;
@@ -62,16 +66,25 @@ export type HostelDetails = Prisma.HostelGetPayload<{
   availableRooms: number;
   lowestPrice: number;
   totalRooms: number;
+  activeRooms: number;
+  totalCapacity: number;
+  availableBeds: number;
+  occupiedBeds: number;
 };
 
 export type Room = {
   id: string;
   roomNumber: string;
+  roomName?: string | null;
   roomType: string;
+  customRoomType?: string | null;
   description?: string;
   price: number;
   capacity: number;
-  isAvailable: boolean;
+  status: RoomStatus;
+  hasAttachedBathroom: boolean;
+  acType: ACType;
+  cupboardType: CupboardType;
   amenities: string[];
 };
 

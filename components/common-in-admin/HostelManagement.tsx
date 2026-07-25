@@ -26,6 +26,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { TableLoader } from "../ui/loader";
 import { getInitialsFromEmail } from "@/lib/utils";
+import { Plus } from "lucide-react";
 
 interface HostelManagementProps {
   hostels: Hostel[];
@@ -194,6 +195,7 @@ export default function HostelManagement({
         <h2 className="text-2xl font-bold">Hostel Management</h2>
         {isSuperAdmin && (
           <Button onClick={() => router.push("/super-admin/hostels/new")}>
+            <Plus className="mr-2 h-4 w-4" />
             Add New Hostel
           </Button>
         )}

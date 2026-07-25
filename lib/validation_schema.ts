@@ -15,15 +15,14 @@ const baseHostelSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
 });
 
-// Schema for hostel
+// Schema for hostel — real Hostel columns only. averageRating/reviewCount/
+// availableRooms/lowestPrice/totalRooms are computed at the API layer, never
+// stored, so they must never appear here (an earlier version of this schema
+// declared them, and since app/api/hostels/[id]/route.ts passes the parsed
+// result straight into prisma.hostel.update({data}), every edit threw a
+// Prisma "Unknown argument" error at runtime).
 export const hostelSchema = baseHostelSchema.extend({
   images: z.array(z.string()).min(1, "At least one image is required"),
-  totalRooms: z.number().min(1, "Must have at least 1 room"),
-  adminId: z.string().optional(),
-  averageRating: z.number().default(0),
-  reviewCount: z.number().default(0),
-  availableRooms: z.number().default(0),
-  lowestPrice: z.number().default(0),
 });
 
 // Schema for hostel creation
@@ -34,13 +33,42 @@ export const createHostelSchema = baseHostelSchema.extend({
 //Schema for hostel update
 export const hostelUpdateSchema = baseHostelSchema.partial().extend({
   images: z.array(z.string()).optional(),
-  averageRating: z.number().optional(),
-  reviewCount: z.number().optional(),
-  availableRooms: z.number().optional(),
-  lowestPrice: z.number().optional(),
-  totalRooms: z.number().min(1, "Must have at least 1 room"),
-  adminId: z.string().optional(),
-  status: z.enum(["ACTIVE", "INACTIVE"]), // keep required if needed
+});
+
+// Common schema for a room — shared by the client form schema and the
+// server create/update schemas.
+const baseRoomSchema = z.object({
+  roomNumber: z.string().min(1, "Room number is required"),
+  roomName: z.string().optional(),
+  roomType: z.enum(["SINGLE", "DOUBLE", "TRIPLE", "DORMITORY", "CUSTOM"]),
+  customRoomType: z.string().optional(),
+  description: z.string().optional(),
+  price: z.number().positive("Price must be positive"),
+  capacity: z.number().int().positive("Bed capacity must be a positive integer"),
+  status: z.enum(["AVAILABLE", "OCCUPIED", "MAINTENANCE", "INACTIVE"]).default("AVAILABLE"),
+  hasAttachedBathroom: z.boolean().default(false),
+  acType: z.enum(["FAN_ONLY", "FAN_AC"]).default("FAN_ONLY"),
+  cupboardType: z.enum(["INDIVIDUAL", "SHARED", "NONE"]).default("NONE"),
+  amenities: z.array(z.string()).default([]),
+});
+
+const requireCustomRoomTypeLabel = (r: { roomType: string; customRoomType?: string }) =>
+  r.roomType !== "CUSTOM" || !!r.customRoomType?.trim();
+
+// Schema for a room row inside the hostel form — includes the optional id
+// so HostelForm can tell an already-persisted room (has id) from a new one
+// (no id) when diffing against the original room list on submit.
+export const roomFormSchema = baseRoomSchema
+  .extend({ id: z.string().optional() })
+  .refine(requireCustomRoomTypeLabel, {
+    message: "Custom room type label is required",
+    path: ["customRoomType"],
+  });
+
+// Schema for the full hostel + rooms form
+export const hostelFormSchema = baseHostelSchema.extend({
+  images: z.array(z.string()).min(1, "At least one image is required"),
+  rooms: z.array(roomFormSchema).default([]),
 });
 
 //Schema for change password
@@ -117,19 +145,7 @@ export const paymentSchema = z.object({
 });
 
 // Schema for room update
-export const roomUpdateSchema = z.object({
-  roomNumber: z.string().min(1, "Room number is required").optional(),
-  roomType: z.enum(["SINGLE", "DOUBLE", "TRIPLE", "DORMITORY"]).optional(),
-  description: z.string().optional(),
-  price: z.number().positive("Price must be positive").optional(),
-  capacity: z
-    .number()
-    .int()
-    .positive("Capacity must be a positive integer")
-    .optional(),
-  isAvailable: z.boolean().optional(),
-  amenities: z.array(z.string()).optional(),
-});
+export const roomUpdateSchema = baseRoomSchema.partial();
 
 // Schema for adding/removing admin
 export const adminSchema = z.object({
@@ -155,14 +171,9 @@ export const reviewSchema = z.object({
 });
 
 // Schema for room creation
-export const createRoomSchema = z.object({
-  roomNumber: z.string().min(1, "Room number is required"),
-  roomType: z.enum(["SINGLE", "DOUBLE", "TRIPLE", "DORMITORY"]),
-  description: z.string().optional(),
-  price: z.number().positive("Price must be positive"),
-  capacity: z.number().int().positive("Capacity must be a positive integer"),
-  isAvailable: z.boolean().default(true),
-  amenities: z.array(z.string()).optional(),
+export const createRoomSchema = baseRoomSchema.refine(requireCustomRoomTypeLabel, {
+  message: "Custom room type label is required",
+  path: ["customRoomType"],
 });
 
 // Schema for user login

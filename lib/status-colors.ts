@@ -82,6 +82,21 @@ export function getWaitlistStatusColor(status: string): string {
   }
 }
 
+export function getRoomStatusColor(status: string): string {
+  switch (status) {
+    case "AVAILABLE":
+      return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+    case "OCCUPIED":
+      return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+    case "MAINTENANCE":
+      return "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
+    case "INACTIVE":
+      return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+}
+
 export function getExpenseCategoryColor(category: string): string {
   switch (category) {
     case "UTILITIES":
