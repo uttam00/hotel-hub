@@ -42,7 +42,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full px-2 pt-2 sm:px-3 sm:pt-3">
+    <header className="sticky top-0 z-50 w-full px-2 pt-2 backdrop-blur-xl sm:px-3 sm:pt-3">
       <div className="container mx-auto flex h-14 items-center justify-between rounded-3xl border border-border/50 bg-background/70 backdrop-blur-2xl px-3 shadow-glass-sm transition-glass sm:h-16 sm:px-6 lg:px-8">
         <Link href={logoHref} className="flex items-center gap-2">
           <Building className="h-6 w-6" />
