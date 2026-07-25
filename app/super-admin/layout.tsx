@@ -16,8 +16,7 @@ export default async function SuperAdminLayout({
   return (
     <AdminLayoutShell
       role={user.role}
-      menuButtonClassName="text-gray-900 dark:text-white"
-      sheetContentClassName="w-[300px] p-0 bg-gray-50/40 dark:bg-gray-900"
+      sheetContentClassName="w-[300px] p-0"
     >
       {children}
     </AdminLayoutShell>

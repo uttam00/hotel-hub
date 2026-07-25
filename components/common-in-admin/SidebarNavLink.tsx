@@ -22,9 +22,9 @@ export function SidebarNavLink({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-        "text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-white",
-        active && "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+        "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-medium",
+        "text-muted-foreground transition-glass hover:bg-accent/50 hover:text-foreground",
+        active && "bg-primary/90 text-primary-foreground shadow-glass-sm backdrop-blur-xl hover:bg-primary hover:text-primary-foreground"
       )}
     >
       <Icon className="h-4 w-4" />

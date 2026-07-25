@@ -14,7 +14,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <AdminLayoutShell role={user.role} sidebarClassName="hidden md:flex w-64 flex-col border-r">
+    <AdminLayoutShell role={user.role}>
       {children}
     </AdminLayoutShell>
   );

@@ -67,6 +67,14 @@ const config: Config = {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		boxShadow: {
+  			'glass-sm': '0 4px 20px rgba(0,0,0,.08)',
+  			'glass-md': '0 10px 40px rgba(0,0,0,.12)',
+  			'glass-lg': '0 25px 80px rgba(0,0,0,.18)'
+  		},
+  		transitionTimingFunction: {
+  			glass: 'cubic-bezier(0.22, 1, 0.36, 1)'
+  		},
   		keyframes: {
   			'accordion-down': {
   				from: {

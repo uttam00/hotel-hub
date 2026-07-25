@@ -44,6 +44,7 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <GoogleMapsProvider>
+              <div className="glass-backdrop" aria-hidden="true" />
               <div className="min-h-screen flex flex-col">
                 <Header />
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex-1">

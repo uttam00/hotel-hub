@@ -3,12 +3,72 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui,
+    "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Shared timing for every glass hover/press/open transition, per the
+     Liquid Glass spec's cubic-bezier easing — one class instead of
+     repeating the timing function on every interactive component. */
+  .transition-glass {
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+/* Soft, fixed decorative background: a few large blurred color blobs behind
+   all content, giving the "depth behind glass" layer the spec calls for.
+   Pure CSS, position: fixed so it never affects layout/scroll, and it sits
+   behind everything via negative z-index — cheap to render, no JS. */
+.glass-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.glass-backdrop::before,
+.glass-backdrop::after {
+  content: "";
+  position: absolute;
+  width: 60vw;
+  height: 60vw;
+  border-radius: 9999px;
+  filter: blur(120px);
+  opacity: 0.18;
+}
+
+.glass-backdrop::before {
+  top: -15vw;
+  left: -10vw;
+  background: hsl(217 91% 60%);
+}
+
+.glass-backdrop::after {
+  bottom: -20vw;
+  right: -10vw;
+  background: hsl(280 65% 65%);
+}
+
+.dark .glass-backdrop::before,
+.dark .glass-backdrop::after {
+  opacity: 0.12;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -42,7 +102,7 @@ body {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --radius: 1.25rem;
     --sidebar-background: 220 20% 98%;
     --sidebar-foreground: 222 15% 30%;
     --sidebar-primary: 217 91% 52%;
