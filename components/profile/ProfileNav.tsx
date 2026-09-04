@@ -33,7 +33,7 @@ export function ProfileNav({ showEmergency }: { showEmergency: boolean }) {
 
   return (
     <nav
-      className="flex h-9 items-center gap-4 overflow-x-auto border-b border-border"
+      className="no-scrollbar flex h-9 items-center gap-4 overflow-x-auto border-b border-border"
       aria-label="Profile sections"
     >
       {sections.map(({ id, label, icon: Icon }) => {

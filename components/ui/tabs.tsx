@@ -23,7 +23,9 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "flex h-9 items-center gap-4 overflow-x-auto border-b border-border text-muted-foreground",
+      // `no-scrollbar` keeps the strip scrollable when there are more tabs
+      // than fit, without painting a track under the labels.
+      "no-scrollbar flex h-9 items-center gap-4 overflow-x-auto border-b border-border text-muted-foreground",
       className
     )}
     {...props}

@@ -22,7 +22,10 @@
       "Bash(curl -s http://localhost:3111/)",
       "Bash(curl -s http://localhost:3111/auth/login)",
       "Bash(curl -s http://localhost:3111/contact)",
-      "Bash(pkill -f \"next dev\")"
+      "Bash(pkill -f \"next dev\")",
+      "Bash(curl -s \"http://localhost:3112/_next/static/css/app/layout.css\" -o /tmp/app.css)",
+      "Bash(curl -s http://localhost:3112/auth/login)",
+      "Bash(pkill -f \"next dev -p 3112\")"
     ]
   }
 }

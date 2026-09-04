@@ -344,6 +344,21 @@
   .mask-fade-b {
     mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
   }
+
+  /* Scrollable without a visible scrollbar.
+     For tab strips: they must still scroll horizontally when the labels
+     outrun the width, but a scrollbar track under a two-tab bar is noise.
+     This also suppresses the phantom *vertical* bar that `overflow-x: auto`
+     brings with it — per spec, a non-`visible` overflow-x forces overflow-y
+     to compute to `auto`, so the tab triggers' 1px `-mb-px` overhang was
+     enough to make one appear. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
