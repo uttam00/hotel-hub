@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, QrCode } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { QrCode, ShieldAlert } from "lucide-react";
+
+import { PageHeader } from "@/components/layout/page-header";
+import { Panel, PanelHeader } from "@/components/ui/panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { qrApi } from "@/services/api";
 
 export default function QrCodePage() {
@@ -21,37 +23,44 @@ export default function QrCodePage() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Check-in QR Code</h1>
-          <p className="text-muted-foreground">Show this at the gate for attendance check-in</p>
-        </div>
-      </div>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Entry pass"
+        description="Show this at the gate to be marked present"
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Entry pass" }]}
+      />
 
-      <Card className="max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2">
-            <QrCode className="h-5 w-5" /> Your Code
-          </CardTitle>
-          <CardDescription>This code is personal — don&apos;t share it with anyone else.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center pb-8">
+      <Panel className="max-w-sm">
+        <PanelHeader title="Your code" icon={QrCode} />
+        <div className="flex justify-center p-6">
           {loading ? (
-            <LoadingSpinner message="Generating your code..." />
+            <Skeleton className="size-56" />
           ) : dataUrl ? (
+            // The QR is generated server-side as a data URL, so next/image
+            // would add nothing here.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={dataUrl} alt="Your check-in QR code" className="h-64 w-64" />
+            <img
+              src={dataUrl}
+              alt="Your personal check-in QR code"
+              className="size-56 rounded-sm border border-border bg-white p-2"
+            />
           ) : (
-            <p className="text-muted-foreground text-sm">Couldn&apos;t load your QR code. Try again later.</p>
+            <EmptyState
+              variant="inline"
+              icon={QrCode}
+              title="Couldn't load your code"
+              description="Refresh the page, or ask your warden to mark you present manually."
+            />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Panel>
+
+      <Alert variant="warning" className="max-w-sm">
+        <ShieldAlert />
+        <AlertDescription>
+          This code identifies you personally. Don&apos;t share it or let anyone photograph it.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

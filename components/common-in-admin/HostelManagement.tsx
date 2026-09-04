@@ -1,15 +1,40 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Building2, MoreHorizontal, Pencil, Plus, ShieldCheck, Trash } from "lucide-react";
+import { Role } from "@prisma/client";
+
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Panel, PanelHeader } from "@/components/ui/panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -17,16 +42,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableScroller,
 } from "@/components/ui/table";
+import { HOSTEL_STATUS, StatusBadge } from "@/components/ui/status-badge";
 import { adminApi, hostelApi } from "@/services/api";
-import { Hostel, HostelAdmin } from "@/types";
-import { Role } from "@prisma/client";
-import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
-import { TableLoader } from "../ui/loader";
 import { getInitialsFromEmail } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { formatNumber } from "@/lib/format";
+import type { Hostel, HostelAdmin } from "@/types";
 
 interface HostelManagementProps {
   hostels: Hostel[];
@@ -34,6 +56,14 @@ interface HostelManagementProps {
   loading: boolean;
 }
 
+/**
+ * The property register, shared by the super-admin (who can create, delete and
+ * assign admins) and the hostel-admin (who can only edit their own).
+ *
+ * Restructured so the dialogs live once at the component root rather than being
+ * instantiated inside every table row — the previous version mounted a Dialog
+ * per hostel, so a hundred properties meant a hundred portals.
+ */
 export default function HostelManagement({
   hostels,
   userRole,
@@ -42,24 +72,13 @@ export default function HostelManagement({
   const isSuperAdmin = userRole === Role.SUPER_ADMIN;
   const router = useRouter();
 
-  // Consolidated state for dialogs and hostel management
-  const [state, setState] = useState<{
-    selectedHostel: Hostel | null;
-    admins: Array<Pick<HostelAdmin, "id" | "name" | "email">>;
-    newAdminId: string;
-    isAdminDialogOpen: boolean;
-    isDeleteDialogOpen: boolean;
-    isFetching: boolean;
-  }>({
-    selectedHostel: null,
-    admins: [],
-    newAdminId: "",
-    isAdminDialogOpen: false,
-    isDeleteDialogOpen: false,
-    isFetching: false,
-  });
+  const [selectedHostel, setSelectedHostel] = useState<Hostel | null>(null);
+  const [admins, setAdmins] = useState<Array<Pick<HostelAdmin, "id" | "name" | "email">>>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [adminsOpen, setAdminsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
-  // Generic API handler with error handling and toast notifications
   const handleApiCall = useCallback(
     async (
       apiCall: () => Promise<unknown>,
@@ -67,41 +86,34 @@ export default function HostelManagement({
       errorMessage: string,
       callback?: () => void
     ) => {
-      setState((prev) => ({ ...prev, isFetching: true }));
+      setIsFetching(true);
       try {
         await apiCall();
         toast.success(successMessage);
         callback?.();
       } catch (error: any) {
-        const message =
-          error?.response?.data?.message || // Axios style (if using Axios)
-          error?.message || // Native fetch error
-          errorMessage;
-
-        toast.error(message);
+        toast.error(error?.response?.data?.message || error?.message || errorMessage);
         console.error(error);
       } finally {
-        setState((prev) => ({ ...prev, isFetching: false }));
+        setIsFetching(false);
       }
     },
     []
   );
 
-  // Fetch hostel admins
   const fetchHostelAdmins = useCallback(
     (hostelId: string) =>
       handleApiCall(
         async () => {
           const response = await adminApi.getByHostel(hostelId);
-          setState((prev) => ({ ...prev, admins: response.admins }));
+          setAdmins(response.admins);
         },
-        "Admins fetched successfully",
+        "Admins loaded",
         "Failed to fetch hostel admins"
       ),
     [handleApiCall]
   );
 
-  // Add admin to hostel
   const handleAddAdmin = useCallback(
     async (hostelId: string, adminEmail: string) => {
       const { initials, isValidEmail } = getInitialsFromEmail(adminEmail);
@@ -112,25 +124,18 @@ export default function HostelManagement({
 
       await handleApiCall(
         async () => {
-          const createdAdminData = await adminApi.create({
-            name: initials,
-            email: adminEmail,
-          });
-
-          await adminApi.assignHostel(createdAdminData.id, [hostelId]);
-          setState((prev) => ({ ...prev, newAdminId: "" }));
-
+          const created = await adminApi.create({ name: initials, email: adminEmail });
+          await adminApi.assignHostel(created.id, [hostelId]);
+          setNewAdminEmail("");
           await fetchHostelAdmins(hostelId);
-          setState((prev) => ({ ...prev, isAdminDialogOpen: false }));
         },
-        "Admin added successfully and assigned to hostel",
+        "Admin added and assigned to this hostel",
         "Failed to add admin"
       );
     },
     [handleApiCall, fetchHostelAdmins]
   );
 
-  // Remove admin from hostel
   const handleRemoveAdmin = useCallback(
     (hostelId: string, adminId: string) =>
       handleApiCall(
@@ -138,330 +143,246 @@ export default function HostelManagement({
           await adminApi.unassignHostel(adminId, hostelId);
           await fetchHostelAdmins(hostelId);
         },
-        "Admin removed successfully",
+        "Admin removed",
         "Failed to remove admin"
       ),
     [handleApiCall, fetchHostelAdmins]
   );
 
-  // Delete hostel
   const handleDeleteHostel = useCallback(
     (hostelId: string) =>
       handleApiCall(
         async () => {
           await hostelApi.delete(hostelId);
-          setState((prev) => ({
-            ...prev,
-            isDeleteDialogOpen: false,
-            selectedHostel: null,
-          }));
+          setDeleteOpen(false);
+          setSelectedHostel(null);
           router.refresh();
         },
-        "Hostel deleted successfully",
+        "Hostel deleted",
         "Failed to delete hostel"
       ),
     [handleApiCall, router]
   );
 
-  // Handle viewing admins for a specific hostel
-  const handleViewAdmins = useCallback(
-    (hostel: Hostel) => {
-      setState((prev) => ({
-        ...prev,
-        selectedHostel: hostel,
-        isAdminDialogOpen: true,
-      }));
-      fetchHostelAdmins(hostel.id);
-    },
-    [fetchHostelAdmins]
-  );
+  const openAdmins = (hostel: Hostel) => {
+    setSelectedHostel(hostel);
+    setAdminsOpen(true);
+    setAdmins([]);
+    fetchHostelAdmins(hostel.id);
+  };
 
-  // Handle dialog state changes
-  const handleDialogChange = useCallback(
-    (dialogType: "admin" | "delete", open: boolean) => {
-      setState((prev) => ({
-        ...prev,
-        [dialogType === "admin" ? "isAdminDialogOpen" : "isDeleteDialogOpen"]:
-          open,
-        selectedHostel: open ? prev.selectedHostel : null,
-      }));
-    },
-    []
-  );
+  const editHref = (id: string) =>
+    `/${isSuperAdmin ? "super-admin" : "hostel-admin"}/hostels/${id}/edit`;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Hostel Management</h2>
-        {isSuperAdmin && (
-          <Button onClick={() => router.push("/super-admin/hostels/new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Hostel
-          </Button>
-        )}
-      </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Rooms</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-center">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6}>
-                  <TableLoader />
-                </TableCell>
-              </TableRow>
-            ) : hostels.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  No hostels found
-                </TableCell>
-              </TableRow>
-            ) : (
-              hostels.map((hostel) => (
-                <TableRow key={hostel.id}>
-                  <TableCell className="font-medium">{hostel.name}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">
-                    {hostel.description}
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div>{hostel.address}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {hostel.city}, {hostel.state} {hostel.zipCode}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div>
-                        Available: {hostel.availableRooms}/{hostel.totalRooms}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Types:{" "}
-                        {[
-                          ...new Set(hostel.rooms.map((room) => room.roomType)),
-                        ].join(", ")}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        hostel.status === "ACTIVE"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {hostel.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2 justify-center">
-                      {isSuperAdmin && (
-                        <Dialog
-                          open={
-                            state.isAdminDialogOpen &&
-                            state.selectedHostel?.id === hostel.id
-                          }
-                          onOpenChange={(open) =>
-                            handleDialogChange("admin", open)
-                          }
-                        >
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleViewAdmins(hostel)}
-                            >
-                              Manage Admins
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent
-                            onInteractOutside={(e) => e.preventDefault()}
-                          >
-                            <DialogHeader>
-                              <DialogTitle>Manage Hostel Admins</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="newAdmin">Add New Admin</Label>
-                                <div className="flex gap-2">
-                                  <Input
-                                    id="newAdmin"
-                                    value={state.newAdminId}
-                                    onChange={(e) =>
-                                      setState((prev) => ({
-                                        ...prev,
-                                        newAdminId: e.target.value,
-                                      }))
-                                    }
-                                    placeholder="Enter user ID"
-                                    disabled={state.isFetching}
-                                  />
-                                  <Button
-                                    onClick={() =>
-                                      handleAddAdmin(
-                                        hostel.id,
-                                        state.newAdminId
-                                      )
-                                    }
-                                    disabled={
-                                      state.isFetching || !state.newAdminId
-                                    }
-                                  >
-                                    Add
-                                  </Button>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>
-                                  {state.selectedHostel?.name}'s Current Admins
-                                </Label>
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Name</TableHead>
-                                      <TableHead>Email</TableHead>
-                                      <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {state.isFetching ? (
-                                      <TableRow>
-                                        <TableCell colSpan={3}>
-                                          <TableLoader />
-                                        </TableCell>
-                                      </TableRow>
-                                    ) : state.admins.length === 0 &&
-                                      !state.isFetching ? (
-                                      <TableRow>
-                                        <TableCell
-                                          colSpan={3}
-                                          className="text-center"
-                                        >
-                                          No admins assigned
-                                        </TableCell>
-                                      </TableRow>
-                                    ) : (
-                                      state.admins.map((admin) => (
-                                        <TableRow key={admin.id}>
-                                          <TableCell>{admin.name}</TableCell>
-                                          <TableCell>{admin.email}</TableCell>
-                                          <TableCell>
-                                            <Button
-                                              variant="destructive"
-                                              size="sm"
-                                              onClick={() =>
-                                                handleRemoveAdmin(
-                                                  hostel.id,
-                                                  admin.id
-                                                )
-                                              }
-                                              disabled={state.isFetching}
-                                            >
-                                              Remove
-                                            </Button>
-                                          </TableCell>
-                                        </TableRow>
-                                      ))
-                                    )}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      )}
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          router.push(
-                            `/${
-                              isSuperAdmin ? "super-admin" : "hostel-admin"
-                            }/hostels/${hostel.id}/edit`
-                          )
-                        }
-                      >
-                        Edit
-                      </Button>
-                      {isSuperAdmin && (
-                        <Dialog
-                          open={
-                            state.isDeleteDialogOpen &&
-                            state.selectedHostel?.id === hostel.id
-                          }
-                          onOpenChange={(open) =>
-                            handleDialogChange("delete", open)
-                          }
-                        >
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="destructive"
-                              onClick={() =>
-                                setState((prev) => ({
-                                  ...prev,
-                                  selectedHostel: hostel,
-                                  isDeleteDialogOpen: true,
-                                }))
-                              }
-                              disabled={state.isFetching}
-                            >
-                              Delete
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent
-                            onInteractOutside={(e) => e.preventDefault()}
-                          >
-                            <DialogHeader>
-                              <DialogTitle>Delete Hostel</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <p>
-                                Are you sure you want to delete{" "}
-                                <strong>{state.selectedHostel?.name}</strong>?
-                                This action cannot be undone.
-                              </p>
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  onClick={() =>
-                                    setState((prev) => ({
-                                      ...prev,
-                                      isDeleteDialogOpen: false,
-                                    }))
-                                  }
-                                  disabled={state.isFetching}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  onClick={() => handleDeleteHostel(hostel.id)}
-                                  disabled={state.isFetching}
-                                >
-                                  {state.isFetching ? "Deleting..." : "Delete"}
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      )}
-                    </div>
-                  </TableCell>
+    <>
+      <Panel>
+        <PanelHeader
+          title="Properties"
+          description={loading ? "Loading…" : `${hostels.length} on record`}
+          icon={Building2}
+          action={
+            isSuperAdmin ? (
+              <Button size="xs" onClick={() => router.push("/super-admin/hostels/new")}>
+                <Plus className="size-3.5" />
+                Add hostel
+              </Button>
+            ) : undefined
+          }
+        />
+
+        {loading ? (
+          <SkeletonTable rows={5} columns={5} />
+        ) : hostels.length === 0 ? (
+          <EmptyState
+            icon={Building2}
+            title="No properties yet"
+            description={
+              isSuperAdmin
+                ? "Add a hostel to start onboarding rooms, admins and residents."
+                : "No hostel has been assigned to your account yet."
+            }
+            actionLabel={isSuperAdmin ? "Add a hostel" : undefined}
+            actionHref={isSuperAdmin ? "/super-admin/hostels/new" : undefined}
+          />
+        ) : (
+          <TableScroller maxHeight="calc(100vh - 20rem)">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Hostel</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead numeric>Rooms</TableHead>
+                  <TableHead>Room types</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              </TableHeader>
+              <TableBody>
+                {hostels.map((hostel) => {
+                  const types = [...new Set((hostel.rooms ?? []).map((r) => r.roomType))];
+                  return (
+                    <TableRow key={hostel.id}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">{hostel.name}</p>
+                        <p className="max-w-[18rem] truncate text-xs text-muted-foreground">
+                          {hostel.description}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="max-w-[16rem] truncate">{hostel.address}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {hostel.city}, {hostel.state} {hostel.zipCode}
+                        </p>
+                      </TableCell>
+                      <TableCell numeric>
+                        {formatNumber(hostel.availableRooms)}
+                        <span className="text-muted-foreground">
+                          /{formatNumber(hostel.totalRooms)}
+                        </span>
+                        <span className="block text-2xs text-muted-foreground">available</span>
+                      </TableCell>
+                      <TableCell className="max-w-[12rem] truncate text-muted-foreground">
+                        {types.length > 0 ? types.join(", ") : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge registry={HOSTEL_STATUS} value={hostel.status} size="sm" />
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon-xs">
+                              <MoreHorizontal className="size-4" />
+                              <span className="sr-only">Actions for {hostel.name}</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => router.push(editHref(hostel.id))}>
+                              <Pencil className="mr-2 size-3.5" />
+                              Edit details
+                            </DropdownMenuItem>
+                            {isSuperAdmin && (
+                              <DropdownMenuItem onClick={() => openAdmins(hostel)}>
+                                <ShieldCheck className="mr-2 size-3.5" />
+                                Manage admins
+                              </DropdownMenuItem>
+                            )}
+                            {isSuperAdmin && (
+                              <DropdownMenuItem
+                                className="text-danger focus:bg-danger-subtle focus:text-danger"
+                                onClick={() => {
+                                  setSelectedHostel(hostel);
+                                  setDeleteOpen(true);
+                                }}
+                              >
+                                <Trash className="mr-2 size-3.5" />
+                                Delete hostel
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableScroller>
+        )}
+      </Panel>
+
+      {/* ---------- Manage admins drawer ---------- */}
+      <Sheet open={adminsOpen} onOpenChange={setAdminsOpen}>
+        <SheetContent side="right">
+          <SheetHeader>
+            <SheetTitle>Admins for {selectedHostel?.name}</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-admin">Add an admin by email</Label>
+              <div className="flex gap-1.5">
+                <Input
+                  id="new-admin"
+                  type="email"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  placeholder="warden@example.com"
+                  disabled={isFetching}
+                />
+                <Button
+                  onClick={() => selectedHostel && handleAddAdmin(selectedHostel.id, newAdminEmail)}
+                  disabled={isFetching || !newAdminEmail}
+                >
+                  Add
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Creates the account if it doesn&apos;t exist and assigns it to this hostel.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="label-annotation mb-1.5">Current admins</h3>
+              {isFetching && admins.length === 0 ? (
+                <SkeletonTable rows={2} columns={2} />
+              ) : admins.length === 0 ? (
+                <p className="rounded-sm border border-border bg-muted/40 px-2.5 py-3 text-sm text-muted-foreground">
+                  Nobody is assigned to this hostel yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border rounded-sm border border-border">
+                  {admins.map((admin) => (
+                    <li key={admin.id} className="flex items-center gap-2 px-2.5 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{admin.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{admin.email}</p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="xs"
+                        onClick={() =>
+                          selectedHostel && handleRemoveAdmin(selectedHostel.id, admin.id)
+                        }
+                        disabled={isFetching}
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
+
+      {/* ---------- Delete confirmation ---------- */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedHostel?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the hostel along with its rooms, bookings, payments and
+              notices. This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isFetching}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                // Keep the dialog up while the request is in flight so the
+                // pending state is visible rather than the dialog vanishing.
+                e.preventDefault();
+                if (selectedHostel) handleDeleteHostel(selectedHostel.id);
+              }}
+              disabled={isFetching}
+              className={buttonVariants({ variant: "destructive-solid" })}
+            >
+              {isFetching ? "Deleting…" : "Delete hostel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

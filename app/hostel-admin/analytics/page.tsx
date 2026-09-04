@@ -12,9 +12,8 @@ export default function HostelAnalyticsPage() {
       fetcher={hostel ? () => analyticsApi.getHostelAnalytics(hostel.id) : null}
       title="Analytics"
       description="How your hostel is performing"
-      gridClassName="md:grid-cols-3"
-      chartTitle="Revenue (last 6 months)"
-      loadingMessage="Loading analytics..."
+      chartTitle="Monthly collections"
+      chartDescription="Completed payments over the last six months"
     />
   );
 }

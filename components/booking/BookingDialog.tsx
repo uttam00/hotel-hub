@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { bookingApi } from "@/services/api";
 import { format, differenceInDays } from "date-fns";
+import { formatCurrency } from "@/lib/format";
 
 interface BookingDialogProps {
   room: {
@@ -118,26 +119,31 @@ export function BookingDialog({ room, hostelName }: BookingDialogProps) {
             </div>
           </div>
 
-          <div className="rounded-lg bg-muted p-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Room price</span>
-              <span>${room.price}/month</span>
+          {/* Amounts are INR throughout the product — this summary previously
+              rendered them with a dollar sign. */}
+          <div className="space-y-1.5 rounded-md border border-border bg-muted/50 p-3">
+            <div className="flex justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">Room rent</span>
+              <span className="font-mono">
+                {formatCurrency(room.price)}
+                <span className="text-muted-foreground">/month</span>
+              </span>
             </div>
             {checkIn && checkOut && (
               <>
-                <div className="flex justify-between text-sm">
-                  <span>Duration</span>
-                  <span>{days} days</span>
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">Duration</span>
+                  <span className="font-mono">{days} days</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Dates</span>
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">Dates</span>
                   <span>
-                    {format(checkIn, "MMM d")} – {format(checkOut, "MMM d, yyyy")}
+                    {format(checkIn, "d MMM")} – {format(checkOut, "d MMM yyyy")}
                   </span>
                 </div>
-                <div className="border-t pt-2 flex justify-between font-semibold">
+                <div className="flex justify-between gap-3 border-t border-border pt-2 text-sm font-semibold">
                   <span>Total</span>
-                  <span>${totalPrice.toFixed(2)}</span>
+                  <span className="font-mono">{formatCurrency(totalPrice)}</span>
                 </div>
               </>
             )}

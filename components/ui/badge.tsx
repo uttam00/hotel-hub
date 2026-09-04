@@ -1,36 +1,46 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
+/**
+ * Low-key rectangular tags. Badges here are labels, not buttons — no hover
+ * state, because a badge that lights up under the cursor reads as clickable.
+ *
+ * For entity status (payment, booking, room, attendance…) use <StatusBadge>
+ * from components/ui/status-badge instead: it pairs the tone with an icon and
+ * a written label so status is never carried by colour alone.
+ */
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold backdrop-blur-xl transition-glass focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-xs font-medium leading-4 [&_svg]:size-3 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary/90 text-primary-foreground hover:bg-primary",
-        secondary:
-          "border-transparent bg-secondary/80 text-secondary-foreground hover:bg-secondary",
-        destructive:
-          "border-transparent bg-destructive/90 text-destructive-foreground hover:bg-destructive",
-        outline: "border-border/60 bg-card/40 text-foreground",
+        default: "border-primary-border bg-primary-subtle text-primary",
+        secondary: "border-border bg-muted text-muted-foreground",
+        outline: "border-border-strong bg-transparent text-foreground",
+        success: "border-success-border bg-success-subtle text-success",
+        warning: "border-warning-border bg-warning-subtle text-warning",
+        danger: "border-danger-border bg-danger-subtle text-danger",
+        destructive: "border-danger-border bg-danger-subtle text-danger",
+        info: "border-info-border bg-info-subtle text-info",
+        neutral: "border-neutral-border bg-neutral-subtle text-neutral",
+        /** Solid fill — reserve for counts on dark surfaces (sidebar badges). */
+        solid: "border-transparent bg-primary text-primary-foreground",
       },
     },
     defaultVariants: {
       variant: "default",
     },
   }
-)
+);
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
+  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
-export { Badge, badgeVariants }
+export { Badge, badgeVariants };

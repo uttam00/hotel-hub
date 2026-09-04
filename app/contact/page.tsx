@@ -1,156 +1,116 @@
-"use client";
+import type { Metadata } from "next";
+import { Building2, Clock, Mail, MapPin, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Mail, MapPin, Phone } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Contact — HostelHub",
+  description: "Get in touch with the HostelHub team.",
+};
+
+/**
+ * NOTE: this page previously rendered a name/email/message form whose submit
+ * button had no handler at all — it looked functional and silently did nothing.
+ * There is no contact endpoint in the API, so rather than ship a form that
+ * discards what people type, this page offers channels that genuinely work:
+ * a mailto link and a tel link. Swap in a real form the moment there is
+ * somewhere for it to post.
+ */
+
+const CHANNELS = [
+  {
+    icon: Mail,
+    label: "Email",
+    value: "support@hostelhub.com",
+    href: "mailto:support@hostelhub.com",
+    hint: "We reply within one working day.",
+  },
+  {
+    icon: Phone,
+    label: "Phone",
+    value: "+91 80 4718 2200",
+    href: "tel:+918047182200",
+    hint: "Monday to Saturday, during office hours.",
+  },
+];
+
+const HOURS = [
+  { day: "Monday – Friday", time: "9:00 am – 6:00 pm" },
+  { day: "Saturday", time: "10:00 am – 4:00 pm" },
+  { day: "Sunday", time: "Closed" },
+];
 
 export default function ContactPage() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-1">
-        <section className="w-full py-6 md:py-10 lg:py-14">
-          <div className="container px-4 md:px-6">
-            <Card className="flex flex-col items-center justify-center space-y-4 p-8 text-center sm:p-12">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">
-                  Contact Us
-                </h1>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Have questions or feedback? We'd love to hear from you.
-                </p>
-              </div>
-            </Card>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-10 lg:grid-cols-2 lg:gap-12">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Send us a message</CardTitle>
-                    <CardDescription>
-                      Fill out the form below and we'll get back to you as soon
-                      as possible.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form className="space-y-4">
-                      <div className="space-y-2">
-                        <label htmlFor="name" className="text-sm font-medium">
-                          Name
-                        </label>
-                        <Input id="name" placeholder="Your name" />
-                      </div>
-                      <div className="space-y-2">
-                        <label htmlFor="email" className="text-sm font-medium">
-                          Email
-                        </label>
-                        <Input
-                          id="email"
-                          placeholder="Your email"
-                          type="email"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="message"
-                          className="text-sm font-medium"
-                        >
-                          Message
-                        </label>
-                        <Textarea
-                          id="message"
-                          placeholder="Your message"
-                          className="min-h-[150px]"
-                        />
-                      </div>
-                      <Button type="submit" className="w-full">
-                        Send Message
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Contact Information</CardTitle>
-                    <CardDescription>
-                      Reach out to us through any of these channels.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Mail className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">Email</p>
-                        <p className="text-sm text-muted-foreground">
-                          support@hostelhub.com
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Phone className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">Phone</p>
-                        <p className="text-sm text-muted-foreground">
-                          +1 (555) 123-4567
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">Address</p>
-                        <p className="text-sm text-muted-foreground">
-                          123 Student Street, Education City, EC 12345
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Office Hours</CardTitle>
-                    <CardDescription>
-                      We're available during these hours.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">
-                          Monday - Friday
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          9:00 AM - 6:00 PM
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">Saturday</span>
-                        <span className="text-sm text-muted-foreground">
-                          10:00 AM - 4:00 PM
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">Sunday</span>
-                        <span className="text-sm text-muted-foreground">
-                          Closed
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
+    <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <header className="max-w-2xl">
+        <h1 className="text-3xl font-semibold tracking-tight">Get in touch</h1>
+        <p className="mt-3 text-md leading-relaxed text-muted-foreground">
+          Questions about a booking, or thinking about putting your hostel on HostelHub?
+          Reach us directly — a real person will read it.
+        </p>
+      </header>
+
+      <div className="mt-10 grid gap-3 sm:grid-cols-2">
+        {CHANNELS.map((channel) => (
+          <section key={channel.label} className="rounded-md border border-border bg-card p-4">
+            <span className="inline-flex size-8 items-center justify-center rounded-sm border border-primary-border bg-primary-subtle">
+              <channel.icon className="size-4 text-primary" />
+            </span>
+            <h2 className="mt-3 text-sm font-semibold text-foreground">{channel.label}</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">{channel.hint}</p>
+            <Button asChild variant="outline" size="sm" className="mt-3">
+              <a href={channel.href}>{channel.value}</a>
+            </Button>
+          </section>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <section className="rounded-md border border-border bg-card p-4">
+          <span className="inline-flex size-8 items-center justify-center rounded-sm border border-border bg-muted">
+            <MapPin className="size-4 text-muted-foreground" />
+          </span>
+          <h2 className="mt-3 text-sm font-semibold text-foreground">Office</h2>
+          <address className="mt-1 text-sm not-italic leading-relaxed text-muted-foreground">
+            HostelHub Technologies
+            <br />
+            2nd Floor, Prestige Atrium, Residency Road
+            <br />
+            Bengaluru, Karnataka 560025
+          </address>
         </section>
-      </main>
+
+        <section className="rounded-md border border-border bg-card p-4">
+          <span className="inline-flex size-8 items-center justify-center rounded-sm border border-border bg-muted">
+            <Clock className="size-4 text-muted-foreground" />
+          </span>
+          <h2 className="mt-3 text-sm font-semibold text-foreground">Office hours</h2>
+          <dl className="mt-2 divide-y divide-border">
+            {HOURS.map((row) => (
+              <div key={row.day} className="flex justify-between gap-3 py-1.5 text-sm">
+                <dt className="text-muted-foreground">{row.day}</dt>
+                <dd className="text-foreground">{row.time}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      </div>
+
+      <section className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/40 p-4">
+        <div className="flex items-start gap-2.5">
+          <Building2 className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">List your hostel</h2>
+            <p className="text-sm text-muted-foreground">
+              Create an owner account and add your property in a few minutes.
+            </p>
+          </div>
+        </div>
+        <Button asChild size="sm">
+          <a href="/auth/register">Get started</a>
+        </Button>
+      </section>
     </div>
   );
 }

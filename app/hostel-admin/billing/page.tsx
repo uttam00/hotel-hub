@@ -4,21 +4,16 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BrandSpinner } from "@/components/ui/brand-spinner";
+import { StatusBadge, SUBSCRIPTION_STATUS } from "@/components/ui/status-badge";
 import { subscriptionApi } from "@/services/api";
 import { PageHeader } from "@/components/layout/page-header";
 import { useMyHostel } from "@/hooks/use-my-hostel";
-import { CheckCircle2, Lock, Unlock } from "lucide-react";
+import { formatDate } from "@/lib/format";
+import { CheckCircle2, Lock, Unlock, Wallet } from "lucide-react";
 
 const PLANS: { id: "MONTHLY" | "YEARLY"; label: string; price: string; blurb: string }[] = [
   { id: "MONTHLY", label: "Monthly", price: "₹999/month", blurb: "Billed every month, cancel anytime." },
@@ -128,96 +123,110 @@ function BillingPageContent() {
   const isActive = data?.accessLevel === "FULL";
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Billing" description="Manage your HostelHub subscription" />
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Billing"
+        description="Your HostelHub subscription"
+        breadcrumbs={[{ label: "Finance" }, { label: "Billing" }]}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Current Plan
-            {confirming ? (
-              <Badge variant="secondary" className="flex items-center gap-1.5">
-                <BrandSpinner size="sm" /> Confirming...
+      {/* Current state first — the question is always "am I covered?" */}
+      <Panel>
+        <PanelHeader
+          title="Current plan"
+          icon={Wallet}
+          action={
+            confirming ? (
+              <Badge variant="secondary">
+                <BrandSpinner size="sm" />
+                Confirming
               </Badge>
+            ) : subscription ? (
+              <StatusBadge registry={SUBSCRIPTION_STATUS} value={subscription.status} />
             ) : (
-              subscription && (
-                <Badge variant={isActive ? "default" : "secondary"}>
-                  {subscription.status}
-                </Badge>
-              )
-            )}
-          </CardTitle>
-          <CardDescription>
+              <Badge variant="neutral">No subscription</Badge>
+            )
+          }
+        />
+        <div className="p-3">
+          <p className="text-sm text-muted-foreground">
             {confirming
               ? "Payment received — this can take a few seconds to confirm."
               : subscription
               ? `${subscription.plan === "MONTHLY" ? "Monthly" : "Yearly"} plan, ${
                   isActive ? "renews" : "expired"
-                } ${new Date(subscription.endDate).toLocaleDateString()}`
+                } ${formatDate(subscription.endDate)}`
               : "You don't have an active subscription yet."}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          </p>
+        </div>
+      </Panel>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">
-            {isActive ? "What's unlocked" : "What renewing unlocks"}
-          </CardTitle>
-          <CardDescription>
-            {isActive
-              ? "Your subscription is active, so these are all available:"
-              : "These are paused until you subscribe or renew:"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm">
-            {GATED_FEATURES.map((feature) => (
-              <li key={feature} className="flex items-center gap-2">
-                {isActive ? (
-                  <Unlock className="h-4 w-4 shrink-0 text-green-600" />
-                ) : (
-                  <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
-                )}
-                <span className={isActive ? "" : "text-muted-foreground"}>{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      <Panel>
+        <PanelHeader
+          title={isActive ? "What's unlocked" : "What renewing unlocks"}
+          description={
+            isActive
+              ? "Your subscription is active, so these are all available"
+              : "These are paused until you subscribe or renew"
+          }
+        />
+        <ul className="divide-y divide-border">
+          {GATED_FEATURES.map((feature) => (
+            <li key={feature} className="flex items-center gap-2.5 px-3 py-2">
+              {isActive ? (
+                <Unlock className="size-4 shrink-0 text-success" />
+              ) : (
+                <Lock className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className={isActive ? "text-sm" : "text-sm text-muted-foreground"}>
+                {feature}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {PLANS.map((plan) => (
-          <Card key={plan.id}>
-            <CardHeader>
-              <CardTitle>{plan.label}</CardTitle>
-              <CardDescription>{plan.blurb}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{plan.price}</p>
-            </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                disabled={checkingOut !== null}
-                onClick={() => handleSubscribe(plan.id)}
-              >
-                {checkingOut === plan.id ? (
-                  <span className="flex items-center gap-2">
-                    <BrandSpinner size="sm" />
-                    Redirecting...
-                  </span>
-                ) : subscription?.plan === plan.id && isActive ? (
-                  <span className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" /> Renew
-                  </span>
-                ) : (
-                  "Subscribe"
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+      <div className="grid gap-3 md:grid-cols-2">
+        {PLANS.map((plan) => {
+          const isCurrent = subscription?.plan === plan.id && isActive;
+          return (
+            <Panel
+              key={plan.id}
+              className={isCurrent ? "border-primary-border bg-primary-subtle/30" : undefined}
+            >
+              <div className="flex flex-col gap-3 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold">{plan.label}</h2>
+                    <p className="text-sm text-muted-foreground">{plan.blurb}</p>
+                  </div>
+                  {isCurrent && <Badge variant="default">Current</Badge>}
+                </div>
+                <p className="font-mono text-2xl font-semibold tracking-tight">{plan.price}</p>
+                <Button
+                  className="w-full"
+                  variant={isCurrent ? "outline" : "default"}
+                  disabled={checkingOut !== null}
+                  onClick={() => handleSubscribe(plan.id)}
+                >
+                  {checkingOut === plan.id ? (
+                    <>
+                      <BrandSpinner size="sm" />
+                      Redirecting…
+                    </>
+                  ) : isCurrent ? (
+                    <>
+                      <CheckCircle2 className="size-3.5" />
+                      Renew
+                    </>
+                  ) : (
+                    "Subscribe"
+                  )}
+                </Button>
+              </div>
+            </Panel>
+          );
+        })}
       </div>
     </div>
   );

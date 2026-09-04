@@ -1,30 +1,36 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { CreditCard, Receipt } from "lucide-react";
+
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { Metric, MetricRow } from "@/components/ui/metric";
+import { Panel, PanelHeader } from "@/components/ui/panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { BrandSpinner } from "@/components/ui/brand-spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroller,
+} from "@/components/ui/table";
+import {
+  PAYMENT_STATUS,
+  StatusBadge,
+  derivePaymentStatus,
+} from "@/components/ui/status-badge";
 import { paymentApi } from "@/services/api";
-import { Payment } from "@/types";
-import { getPaymentStatusColor, OVERDUE_COLOR, PAYMENT_STATUS_CHART_COLORS } from "@/lib/status-colors";
-import { CreditCard, ArrowLeft } from "lucide-react";
-import Link from "next/link";
-
-function isOverdue(payment: Payment) {
-  return payment.status === "PENDING" && !!payment.dueDate && new Date(payment.dueDate) < new Date();
-}
+import { formatCurrency, formatDate, humanizeEnum } from "@/lib/format";
+import type { Payment } from "@/types";
 
 function StudentPaymentsContent() {
   const { data: session, status } = useSession();
@@ -35,14 +41,12 @@ function StudentPaymentsContent() {
   const [payingId, setPayingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    }
+    if (status === "unauthenticated") router.push("/auth/login");
   }, [status, router]);
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await paymentApi.getAll();
       setPayments(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -51,14 +55,11 @@ function StudentPaymentsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (session?.user) {
-      fetchPayments();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+    if (session?.user) fetchPayments();
+  }, [session, fetchPayments]);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -68,8 +69,7 @@ function StudentPaymentsContent() {
     } else if (checkout === "cancelled") {
       toast.error("Checkout was cancelled — no charge was made.");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, fetchPayments]);
 
   const handlePayNow = async (payment: Payment) => {
     setPayingId(payment.id);
@@ -83,201 +83,148 @@ function StudentPaymentsContent() {
     }
   };
 
-  if (status === "loading" || loading) {
-    return <LoadingSpinner fullPage message="Loading your payments..." />;
-  }
+  const rows = useMemo(
+    () => payments.map((p) => ({ payment: p, status: derivePaymentStatus(p) })),
+    [payments]
+  );
 
-  const totalPaid = payments
-    .filter((p) => p.status === "COMPLETED")
-    .reduce((sum, p) => sum + p.amount, 0);
-  const pendingCount = payments.filter((p) => p.status === "PENDING").length;
-  const overdueCount = payments.filter(isOverdue).length;
-
-  const breakdown = ["COMPLETED", "PENDING", "FAILED", "REFUNDED"]
-    .map((status) => ({
-      status,
-      value: payments.filter((p) => p.status === status).reduce((sum, p) => sum + p.amount, 0),
-    }))
-    .filter((d) => d.value > 0);
+  const totalPaid = rows
+    .filter(({ status }) => status === "COMPLETED")
+    .reduce((sum, { payment }) => sum + payment.amount, 0);
+  const outstanding = rows.filter(
+    ({ status }) => status === "PENDING" || status === "OVERDUE"
+  );
+  const outstandingTotal = outstanding.reduce((s, { payment }) => s + payment.amount, 0);
+  const overdueCount = rows.filter(({ status }) => status === "OVERDUE").length;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Payments</h1>
-          <p className="text-muted-foreground">
-            View your transaction history
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="My payments"
+        description="What you've paid and what's still due"
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Payments" }]}
+      />
 
-      {/* Summary */}
-      <div className="grid gap-4 md:grid-cols-3 mb-6">
-        <div className="grid gap-4 sm:grid-cols-3 md:col-span-2 md:grid-cols-1 lg:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Paid</CardDescription>
-              <CardTitle className="text-2xl text-green-600">
-                ₹{totalPaid.toFixed(2)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Transactions</CardDescription>
-              <CardTitle className="text-2xl">{payments.length}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Pending</CardDescription>
-              <CardTitle className="text-2xl text-yellow-600">
-                {pendingCount}
-                {overdueCount > 0 && (
-                  <span className="ml-2 text-sm font-medium text-amber-600">
-                    ({overdueCount} overdue)
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+      <MetricRow className="xl:grid-cols-3">
+        <Metric label="Paid to date" value={formatCurrency(totalPaid)} context="All settled payments" />
+        <Metric
+          label="Outstanding"
+          value={formatCurrency(outstandingTotal)}
+          context={
+            outstanding.length === 0
+              ? "You're all paid up"
+              : `${outstanding.length} payment${outstanding.length === 1 ? "" : "s"}${
+                  overdueCount > 0 ? ` · ${overdueCount} overdue` : ""
+                }`
+          }
+          emphasis={overdueCount > 0 ? "alert" : "default"}
+        />
+        <Metric label="Transactions" value={String(payments.length)} context="On record" />
+      </MetricRow>
 
-        {breakdown.length > 0 && (
-          <Card className="md:row-span-1">
-            <CardHeader className="pb-0">
-              <CardDescription>Breakdown by Status</CardDescription>
-            </CardHeader>
-            <CardContent className="h-40 px-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={breakdown}
-                    dataKey="value"
-                    nameKey="status"
-                    innerRadius="55%"
-                    outerRadius="80%"
-                    paddingAngle={2}
-                  >
-                    {breakdown.map((d) => (
-                      <Cell key={d.status} fill={PAYMENT_STATUS_CHART_COLORS[d.status] ?? "#9ca3af"} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={24}
-                    iconSize={8}
-                    wrapperStyle={{ fontSize: 12 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      <Panel>
+        <PanelHeader
+          title="Transaction history"
+          description={loading ? "Loading…" : `${payments.length} payments`}
+          icon={Receipt}
+        />
 
-      {payments.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <CreditCard className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No transactions yet</h3>
-            <p className="text-muted-foreground text-sm mt-1 mb-4">
-              Your payment history will appear here after you make a booking.
-            </p>
-            <Link href="/hostels">
-              <Button>Browse Hostels</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-3">
-          {payments.map((payment) => {
-            const room = payment.booking?.room;
-            const hostelName = room?.hostel?.name;
-            const roomLabel = room ? `${room.roomType} — #${room.roomNumber}` : null;
-            const overdue = isOverdue(payment);
-
-            return (
-            <Card
-              key={payment.id}
-              className={`hover:shadow-md transition-shadow ${overdue ? "border-amber-300 dark:border-amber-800" : ""}`}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <CreditCard className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {hostelName ? `${hostelName}${roomLabel ? ` — ${roomLabel}` : ""}` : `Payment #${payment.id.slice(-8).toUpperCase()}`}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {hostelName ? `Payment #${payment.id.slice(-8).toUpperCase()} • ` : ""}
-                        {payment.method || "Card Payment"} •{" "}
-                        {new Date(payment.createdAt).toLocaleDateString(
-                          "en-US",
-                          {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          }
-                        )}
-                      </p>
-                      {payment.status === "REFUNDED" && payment.refundedAmount != null && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Refunded ₹{payment.refundedAmount.toFixed(2)}
-                          {payment.refundReason ? ` — ${payment.refundReason}` : ""}
+        {status === "loading" || loading ? (
+          <SkeletonTable rows={5} columns={5} />
+        ) : payments.length === 0 ? (
+          <EmptyState
+            icon={CreditCard}
+            title="No transactions yet"
+            description="Your payment history will appear here once you book a room."
+            actionLabel="Browse hostels"
+            actionHref="/hostels"
+          />
+        ) : (
+          <TableScroller>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Payment</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Due</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead numeric>Amount</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map(({ payment, status: payStatus }) => {
+                  const room = payment.booking?.room;
+                  const hostelName = room?.hostel?.name;
+                  const reference = payment.id.slice(-8).toUpperCase();
+                  return (
+                    <TableRow key={payment.id}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">
+                          {hostelName || payment.description || "Hostel fee"}
                         </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge className={overdue ? OVERDUE_COLOR : getPaymentStatusColor(payment.status)}>
-                        {overdue ? "Overdue" : payment.status}
-                      </Badge>
-                      <span className="font-semibold text-lg">
-                        ₹{payment.amount.toFixed(2)}
-                      </span>
-                    </div>
-                    {payment.status === "PENDING" && (
-                      <Button
-                        size="sm"
-                        disabled={payingId === payment.id}
-                        onClick={() => handlePayNow(payment)}
-                      >
-                        {payingId === payment.id ? (
-                          <span className="flex items-center gap-2">
-                            <BrandSpinner size="sm" />
-                            Redirecting...
-                          </span>
-                        ) : (
-                          "Pay Now"
+                        <p className="text-xs text-muted-foreground">
+                          {room ? `Room ${room.roomNumber} · ` : ""}
+                          <span className="identifier">#{reference}</span>
+                        </p>
+                        {payStatus === "REFUNDED" && payment.refundedAmount != null && (
+                          <p className="text-xs text-muted-foreground">
+                            Refunded {formatCurrency(payment.refundedAmount)}
+                            {payment.refundReason ? ` — ${payment.refundReason}` : ""}
+                          </p>
                         )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            );
-          })}
-        </div>
-      )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {payment.method ? humanizeEnum(payment.method) : "Card"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {formatDate(payment.createdAt)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span className={payStatus === "OVERDUE" ? "text-danger" : undefined}>
+                          {payment.dueDate ? formatDate(payment.dueDate) : "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge registry={PAYMENT_STATUS} value={payStatus} size="sm" />
+                      </TableCell>
+                      <TableCell numeric className="font-medium">
+                        {formatCurrency(payment.amount)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {payment.status === "PENDING" && (
+                          <Button
+                            size="xs"
+                            disabled={payingId !== null}
+                            onClick={() => handlePayNow(payment)}
+                          >
+                            {payingId === payment.id ? (
+                              <>
+                                <BrandSpinner size="sm" />
+                                Opening…
+                              </>
+                            ) : (
+                              "Pay now"
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableScroller>
+        )}
+      </Panel>
     </div>
   );
 }
 
 export default function StudentPaymentsPage() {
   return (
-    <Suspense fallback={<LoadingSpinner fullPage message="Loading your payments..." />}>
+    <Suspense fallback={<LoadingSpinner fullPage message="Loading your payments…" />}>
       <StudentPaymentsContent />
     </Suspense>
   );

@@ -1,28 +1,41 @@
 "use client";
 
 import { Building2 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useHostelContext } from "@/contexts/hostel-context";
 
-// Rendered at the top of the sidebar (both the desktop rail and the mobile
-// Sheet), above the nav links — a workspace-switcher-style control rather
-// than a bar competing with page content or banners. If the admin manages
-// exactly one hostel there is nothing to choose, so it renders as a plain
-// static label with no dropdown affordance at all.
+/**
+ * The property switcher, pinned under the logo in the sidebar.
+ *
+ * Styled for the dark sidebar rather than the light content area. When the
+ * admin manages exactly one hostel there is nothing to choose, so it renders as
+ * a plain label with no dropdown affordance — an inert control that looks
+ * interactive is worse than no control.
+ */
 export function HostelSelectorBar() {
-  const { hostels, selectedHostel, loading, hasMultiple, setSelectedHostelId } = useHostelContext();
+  const { hostels, selectedHostel, loading, hasMultiple, setSelectedHostelId } =
+    useHostelContext();
 
   if (loading || hostels.length === 0) return null;
 
   if (!hasMultiple) {
     return (
-      <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-          <Building2 className="h-4 w-4 text-primary" />
-        </div>
+      <div className="flex items-center gap-2 rounded-sm px-2 py-1.5">
+        <Building2 className="size-4 shrink-0 text-sidebar-primary" />
         <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Managing</p>
-          <p className="truncate text-sm font-semibold leading-tight">{selectedHostel?.name}</p>
+          <p className="text-2xs font-semibold uppercase tracking-[0.08em] text-sidebar-heading">
+            Property
+          </p>
+          <p className="truncate text-sm font-medium leading-tight text-sidebar-accent-foreground">
+            {selectedHostel?.name}
+          </p>
         </div>
       </div>
     );
@@ -30,14 +43,17 @@ export function HostelSelectorBar() {
 
   return (
     <Select value={selectedHostel?.id ?? undefined} onValueChange={setSelectedHostelId}>
-      <SelectTrigger className="h-auto w-full gap-2.5 rounded-lg border-transparent bg-transparent px-2 py-1.5 text-left hover:bg-accent focus:ring-0 focus:ring-offset-0 [&>svg]:shrink-0">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
-            <Building2 className="h-4 w-4 text-primary" />
-          </div>
+      <SelectTrigger
+        aria-label="Switch property"
+        className="h-auto w-full gap-2 border-sidebar-border bg-sidebar-accent/60 px-2 py-1.5 text-left text-sidebar-accent-foreground hover:bg-sidebar-accent focus:border-sidebar-ring focus:ring-sidebar-ring/30 [&>svg]:text-sidebar-foreground"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Building2 className="size-4 shrink-0 text-sidebar-primary" />
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Managing</p>
-            <SelectValue className="block truncate text-sm font-semibold leading-tight" />
+            <p className="text-2xs font-semibold uppercase tracking-[0.08em] text-sidebar-heading">
+              Property
+            </p>
+            <SelectValue className="block truncate text-sm font-medium leading-tight" />
           </div>
         </div>
       </SelectTrigger>

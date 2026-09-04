@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Sparkles, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { useFetch } from "@/hooks/use-fetch";
 import { hostelAdminApi } from "@/services/api";
 
@@ -16,41 +17,37 @@ export function HostelSubscriptions() {
   if (loading || !hostels || hostels.length === 0) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Your Hostels</CardTitle>
-        <CardDescription>Subscription status for each hostel you manage</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ul className="divide-y">
-          {hostels.map((h) => {
-            const isPro = h.accessLevel === "FULL";
-            return (
-              <li key={h.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate font-medium">{h.name}</span>
-                </div>
-                {isPro ? (
-                  <Badge className="shrink-0 gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                    <Sparkles className="h-3 w-3" /> Pro
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="shrink-0">
-                    Free
-                  </Badge>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-        <Link
-          href="/hostel-admin/billing"
-          className="mt-4 inline-block text-sm font-medium text-primary underline underline-offset-4"
-        >
-          Manage billing
-        </Link>
-      </CardContent>
-    </Card>
+    <Panel>
+      <PanelHeader
+        title="Your hostels"
+        description="Subscription status for each property you manage"
+        icon={Building2}
+        action={
+          <Button asChild variant="ghost" size="xs">
+            <Link href="/hostel-admin/billing">Manage billing</Link>
+          </Button>
+        }
+      />
+      <ul className="divide-y divide-border">
+        {hostels.map((h) => {
+          const isPro = h.accessLevel === "FULL";
+          return (
+            <li key={h.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+              <span className="truncate text-sm font-medium">{h.name}</span>
+              {isPro ? (
+                <Badge variant="warning" className="shrink-0">
+                  <Sparkles className="size-3" />
+                  Pro
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="shrink-0">
+                  Free
+                </Badge>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
   );
 }

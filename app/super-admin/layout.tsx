@@ -14,11 +14,6 @@ export default async function SuperAdminLayout({
   }
 
   return (
-    <AdminLayoutShell
-      role={user.role}
-      sheetContentClassName="w-[300px] p-0"
-    >
-      {children}
-    </AdminLayoutShell>
+    <AdminLayoutShell role={user.role}>{children}</AdminLayoutShell>
   );
 }

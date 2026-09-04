@@ -1,7 +1,8 @@
+import { redirect } from "next/navigation";
+import { Role } from "@prisma/client";
+
 import { HostelAdminDashboardStats } from "@/components/hostel-admin/HostelAdminDashboardStats";
 import { getCurrentUser } from "@/lib/auth";
-import { Role } from "@prisma/client";
-import { redirect } from "next/navigation";
 
 export default async function HostelAdminDashboard() {
   const user = await getCurrentUser();
@@ -10,10 +11,6 @@ export default async function HostelAdminDashboard() {
     redirect("/");
   }
 
-  return (
-    <div className="container mx-auto pb-8">
-      <h1 className="text-2xl font-bold mb-8">Hostel Admin Dashboard</h1>
-      <HostelAdminDashboardStats />
-    </div>
-  );
+  // The command centre supplies its own hero heading, so no PageHeader here.
+  return <HostelAdminDashboardStats />;
 }

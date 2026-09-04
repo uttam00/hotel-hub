@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { ArrowLeft, MailCheck } from "lucide-react";
+
+import { AuthHeader } from "@/components/auth/auth-header";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { ArrowLeft, Mail } from "lucide-react";
+import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { authApi } from "@/services/api";
 
 export default function ForgotPasswordPage() {
@@ -23,70 +26,81 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.forgotPassword(email);
       setSent(true);
-      toast.success("Reset link sent! Check your email.");
+      toast.success("Reset link sent — check your email.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to send reset link. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to send reset link. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Forgot Password</CardTitle>
-          <CardDescription>
-            {sent
-              ? "Check your email for the reset link"
-              : "Enter your email to receive a password reset link"}
-          </CardDescription>
-        </CardHeader>
-        {sent ? (
-          <CardContent className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <Mail className="h-8 w-8 text-primary" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              We&apos;ve sent a password reset link to <strong>{email}</strong>.
-              Please check your inbox and spam folder.
-            </p>
-            <Button variant="outline" onClick={() => setSent(false)} className="w-full">
-              Send again
-            </Button>
-          </CardContent>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Sending..." : "Send Reset Link"}
-              </Button>
-            </CardFooter>
-          </form>
-        )}
-        <div className="pb-6 text-center">
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-primary"
+    <AuthShell
+      footer={
+        <Link
+          href="/auth/login"
+          className="inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground underline-offset-4 transition-ui hover:text-foreground hover:underline"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back to sign in
+        </Link>
+      }
+    >
+      {sent ? (
+        <div>
+          <span className="mb-4 inline-flex size-10 items-center justify-center rounded-md border border-success-border bg-success-subtle">
+            <MailCheck className="size-5 text-success" />
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">Check your email</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            We&apos;ve sent a password reset link to{" "}
+            <span className="font-medium text-foreground">{email}</span>. It may take a
+            minute to arrive — check your spam folder too.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => setSent(false)}
+            className="mt-5 w-full"
           >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back to Login
-          </Link>
+            Use a different email
+          </Button>
         </div>
-      </Card>
-    </div>
+      ) : (
+        <>
+          <AuthHeader
+            heading="Reset your password"
+            description="Enter your email and we'll send you a link to set a new one."
+          />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <BrandSpinner size="sm" />
+                  Sending…
+                </>
+              ) : (
+                "Send reset link"
+              )}
+            </Button>
+          </form>
+        </>
+      )}
+    </AuthShell>
   );
 }

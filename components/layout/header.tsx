@@ -2,74 +2,79 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building } from "lucide-react";
-import { UserAccountNav } from "@/components/auth/user-account-nav";
 import { useSession } from "next-auth/react";
+
+import { Logo } from "@/components/brand/logo";
+import { Button } from "@/components/ui/button";
+import { UserAccountNav } from "@/components/auth/user-account-nav";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { getDashboardPath } from "@/lib/route-access";
 import { cn } from "@/lib/utils";
 
+const NAV_LINKS = [
+  { href: "/hostels", label: "Hostels" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+];
+
+/**
+ * The marketplace header. Flat and rule-separated rather than a floating
+ * translucent pill, so it belongs to the same system as the console.
+ */
 export function Header() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const role = session?.user?.role;
-  const isAdmin = role === "SUPER_ADMIN" || role === "HOSTEL_ADMIN";
-  // While the session is still resolving, we don't yet know the role — treat
-  // that as "not settled" rather than defaulting to the public/student nav,
-  // which is what previously flashed the wrong header at a logged-in admin.
-  const showPublicNav = status !== "loading" && !isAdmin;
 
-  // Role-based logo redirect
-  const logoHref =
-    role === "SUPER_ADMIN"
-      ? "/super-admin"
-      : role === "HOSTEL_ADMIN"
-      ? "/hostel-admin"
-      : "/";
-
-  // Student/public nav links
-  const studentNavLinks = [
-    { href: "/", label: "Home" },
-    { href: "/hostels", label: "Hostels" },
-    { href: "/about", label: "About" },
-    { href: "/contact", label: "Contact" },
-  ];
-
-  // Check if a nav link is active
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname?.startsWith(href);
-  };
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : Boolean(pathname?.startsWith(href));
 
   return (
-    <header className="sticky top-0 z-50 w-full px-2 pt-2 backdrop-blur-xl sm:px-3 sm:pt-3">
-      <div className="container mx-auto flex h-14 items-center justify-between rounded-3xl border border-border/50 bg-background/70 backdrop-blur-2xl px-3 shadow-glass-sm transition-glass sm:h-16 sm:px-6 lg:px-8">
-        <Link href={logoHref} className="flex items-center gap-2">
-          <Building className="h-6 w-6" />
-          <span className="text-xl font-bold">HostelHub</span>
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-card/95 backdrop-blur-sm">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-4 sm:px-6 lg:px-8">
+        <Link href={role ? getDashboardPath(role) : "/"} className="shrink-0">
+          <Logo size="sm" />
         </Link>
-        {showPublicNav && (
-          <nav className="hidden md:flex items-center gap-6">
-            {studentNavLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "text-sm font-medium transition-colors",
-                  isActive(link.href)
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        )}
-        <div className="flex items-center gap-2">
+
+        <nav className="hidden items-center gap-5 md:flex" aria-label="Main">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={isActive(link.href) ? "page" : undefined}
+              className={cn(
+                "rounded-sm text-sm transition-ui",
+                isActive(link.href)
+                  ? "font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <ThemeToggle />
-          <NotificationBell />
-          <UserAccountNav />
+          {/* Wait for the session to resolve before choosing between the
+              signed-in controls and the sign-in buttons — rendering either one
+              early flashes the wrong header at a logged-in user. */}
+          {status === "loading" ? null : session?.user ? (
+            <>
+              <NotificationBell />
+              <UserAccountNav />
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/auth/login">Sign in</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/auth/register">Get started</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </header>

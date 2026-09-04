@@ -73,3 +73,14 @@ export function useHostelContext() {
   if (!ctx) throw new Error("useHostelContext must be used within a HostelProvider");
   return ctx;
 }
+
+/**
+ * Same context, but null instead of throwing when there is no provider.
+ *
+ * Only the hostel-admin section is wrapped in HostelProvider; shared chrome
+ * (the console header, the command palette) also renders for super admins and
+ * students, where there is no "selected hostel" at all.
+ */
+export function useOptionalHostelContext(): HostelContextValue | null {
+  return useContext(HostelContext);
+}

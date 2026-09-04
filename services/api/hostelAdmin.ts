@@ -3,10 +3,31 @@ import { apiClient } from "./client";
 export type HostelAdminStats = {
   totalStudents: number;
   totalBookings: number;
-  totalPayments: number;
   totalRooms: number;
-  availableRooms: number;
-  occupiedRooms: number;
+
+  /** Collections. `collectionTrendPct` is null when last month had none. */
+  collectedToday: number;
+  paymentsToday: number;
+  collectedThisMonth: number;
+  collectedLastMonth: number;
+  collectionTrendPct: number | null;
+
+  /** Dues. `overdue*` is the subset of outstanding that is past its due date. */
+  outstandingAmount: number;
+  outstandingCount: number;
+  overdueAmount: number;
+  overdueCount: number;
+
+  /** Today's operations pulse. */
+  arrivalsToday: number;
+  departuresToday: number;
+  visitorsOnPremises: number;
+
+  expensesThisMonth: number;
+  netThisMonth: number;
+
+  activeNotices: number;
+  waitlistWaiting: number;
 };
 
 export type HostelSubscriptionSummary = {

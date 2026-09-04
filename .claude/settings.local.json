@@ -9,7 +9,20 @@
       "Bash(git diff *)",
       "Bash(grep -i \"^jest$\\\\|ts-jest\\\\|jest-mock-extended\")",
       "Bash(npx jest *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(awk -F: '{print $1}')",
+      "Bash(sed -i -e 's/focus:bg-accent\\\\/60/focus:bg-muted/g' -e 's/hover:bg-accent\\\\/60/hover:bg-muted/g' -e 's/bg-accent\\\\/40/bg-muted/g' -e 's/bg-accent\\\\/30/bg-muted/g' dropdown-menu.tsx context-menu.tsx menubar.tsx command.tsx navigation-menu.tsx)",
+      "Bash(sed -i 's/border border-border bg-popover/border border-border-strong bg-popover/g' dropdown-menu.tsx popover.tsx context-menu.tsx menubar.tsx tooltip.tsx hover-card.tsx)",
+      "Bash(grep -n \"\\\\$\\\\|toFixed\\\\|className=\" app/dashboard/payments/page.tsx)",
+      "Bash(python *)",
+      "Bash(grep -rn '\\\\$\\\\{*[a-zA-Z]*\\\\.\\\\?\\\\\\(price\\\\|amount\\\\|totalPrice\\\\|lowestPrice\\\\\\)' --include=\"*.tsx\" app components)",
+      "Bash(sed -i 's|^import { format, differenceInDays } from \"date-fns\";|import { format, differenceInDays } from \"date-fns\";\\\\nimport { formatCurrency } from \"@/lib/format\";|' components/booking/BookingDialog.tsx)",
+      "Bash(sed -i 's|^import { ADDITIONAL_FACILITIES } from \"@/lib/room-facilities\";|import { ADDITIONAL_FACILITIES } from \"@/lib/room-facilities\";\\\\nimport { formatCurrency } from \"@/lib/format\";|' \"app/hostels/[id]/page.tsx\")",
+      "Bash(git stash *)",
+      "Bash(curl -s http://localhost:3111/)",
+      "Bash(curl -s http://localhost:3111/auth/login)",
+      "Bash(curl -s http://localhost:3111/contact)",
+      "Bash(pkill -f \"next dev\")"
     ]
   }
 }

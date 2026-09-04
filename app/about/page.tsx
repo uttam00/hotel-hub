@@ -1,65 +1,53 @@
-"use client";
+import type { Metadata } from "next";
+import { Building2, CheckCircle2, Users } from "lucide-react";
 
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Building, CheckCircle, Users } from "lucide-react";
+export const metadata: Metadata = {
+  title: "About — HostelHub",
+  description:
+    "Why HostelHub exists: making student accommodation simple to find and simple to run.",
+};
+
+const PILLARS = [
+  {
+    icon: Building2,
+    title: "Our story",
+    body: "HostelHub started from a simple frustration: finding a hostel meant phone calls, WhatsApp forwards and site visits, while the people running those hostels tracked hundreds of residents in paper registers.",
+  },
+  {
+    icon: CheckCircle2,
+    title: "Our mission",
+    body: "Give students a straight answer about what a room costs and what it includes, and give hostel owners a real system for occupancy, collections and daily operations.",
+  },
+  {
+    icon: Users,
+    title: "Our community",
+    body: "Students, wardens, owners and accountants all use HostelHub daily. Every part of the product is shaped by what those people actually need to get done.",
+  },
+];
 
 export default function AboutPage() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-1">
-        <section className="w-full py-6 md:py-10 lg:py-14">
-          <div className="container px-4 md:px-6">
-            <Card className="flex flex-col items-center justify-center space-y-4 p-8 text-center sm:p-12">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">
-                  About HostelHub
-                </h1>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  We're on a mission to make student accommodation search and
-                  booking simple, transparent, and hassle-free.
-                </p>
-              </div>
-            </Card>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-10 lg:grid-cols-3 lg:gap-8">
-              <Card>
-                <CardHeader>
-                  <Building className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Our Story</CardTitle>
-                  <CardDescription>
-                    Founded in 2023, HostelHub was born out of the frustration
-                    students face when searching for accommodation.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CheckCircle className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Our Mission</CardTitle>
-                  <CardDescription>
-                    To provide a platform that connects students with quality
-                    accommodation options that match their needs and budget.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <Users className="h-8 w-8 mb-2 text-primary" />
-                  <CardTitle>Our Community</CardTitle>
-                  <CardDescription>
-                    We're building a community of students, hostel owners, and
-                    administrators to create a better accommodation experience.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          </div>
-        </section>
-      </main>
+    <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <header className="max-w-2xl">
+        <h1 className="text-3xl font-semibold tracking-tight">About HostelHub</h1>
+        <p className="mt-3 text-md leading-relaxed text-muted-foreground">
+          We&apos;re making student accommodation simple to find and simple to run —
+          transparent for the people living in it, and manageable for the people
+          responsible for it.
+        </p>
+      </header>
+
+      <div className="mt-10 grid gap-3 sm:grid-cols-3">
+        {PILLARS.map((pillar) => (
+          <section key={pillar.title} className="rounded-md border border-border bg-card p-4">
+            <span className="inline-flex size-8 items-center justify-center rounded-sm border border-primary-border bg-primary-subtle">
+              <pillar.icon className="size-4 text-primary" />
+            </span>
+            <h2 className="mt-3 text-sm font-semibold text-foreground">{pillar.title}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{pillar.body}</p>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

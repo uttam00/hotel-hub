@@ -17,8 +17,9 @@ import { WishlistButton } from "@/components/wishlist/WishlistButton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { NoticeBoard } from "@/components/hostel/NoticeBoard";
 import { JoinWaitlist } from "@/components/hostel/JoinWaitlist";
-import { getRoomStatusColor } from "@/lib/status-colors";
+import { ROOM_STATUS, StatusBadge } from "@/components/ui/status-badge";
 import { ADDITIONAL_FACILITIES } from "@/lib/room-facilities";
+import { formatCurrency } from "@/lib/format";
 
 export default function HostelDetailPage() {
   const router = useRouter();
@@ -83,12 +84,12 @@ export default function HostelDetailPage() {
       : 0;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Card className="space-y-6 p-6 sm:p-8 lg:p-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="space-y-6">
         {/* Header with title and wishlist */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">{hostel.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{hostel.name}</h1>
             <p className="mt-2 flex items-center gap-1.5 text-muted-foreground">
               <MapPin className="h-4 w-4 shrink-0" />
               {hostel.address}, {hostel.city}, {hostel.state} {hostel.zipCode}
@@ -96,7 +97,7 @@ export default function HostelDetailPage() {
             {averageRating > 0 && (
               <div className="flex items-center gap-2 mt-2">
                 <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <Star className="h-4 w-4 fill-warning text-warning" />
                   <span className="font-semibold">
                     {averageRating.toFixed(1)}
                   </span>
@@ -115,12 +116,12 @@ export default function HostelDetailPage() {
           <>
             <Separator />
             <div className="space-y-3">
-              <h2 className="text-xl font-semibold">Photos</h2>
+              <h2 className="text-md font-semibold">Photos</h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {hostel.images.map((image: string, index: number) => (
                   <div
                     key={index}
-                    className="relative aspect-video overflow-hidden rounded-2xl border border-border/40"
+                    className="relative aspect-video overflow-hidden rounded-md border border-border"
                   >
                     <Image
                       src={image}
@@ -139,12 +140,12 @@ export default function HostelDetailPage() {
 
         <div className="grid gap-6 md:grid-cols-2">
           <div>
-            <h2 className="text-xl font-semibold">Description</h2>
+            <h2 className="text-md font-semibold">Description</h2>
             <p className="mt-2 text-muted-foreground">{hostel.description}</p>
           </div>
 
           <div>
-            <h2 className="text-xl font-semibold">Amenities</h2>
+            <h2 className="text-md font-semibold">Amenities</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {hostel.amenities.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -165,8 +166,8 @@ export default function HostelDetailPage() {
           <>
             <Separator />
             <div>
-              <h2 className="text-xl font-semibold">Location</h2>
-              <div className="mt-4 overflow-hidden rounded-2xl border border-border/40">
+              <h2 className="text-md font-semibold">Location</h2>
+              <div className="mt-4 overflow-hidden rounded-md border border-border">
                 <HostelMap
                   name={hostel.name}
                   latitude={hostel.latitude}
@@ -185,7 +186,7 @@ export default function HostelDetailPage() {
         {/* Available Rooms with Booking Dialog */}
         <div>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Available Rooms</h2>
+            <h2 className="text-md font-semibold">Available Rooms</h2>
             <JoinWaitlist hostelId={hostel.id} />
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -202,7 +203,7 @@ export default function HostelDetailPage() {
               return (
                 <div
                   key={room.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-border/40 p-4"
+                  className="flex flex-col gap-3 rounded-md border border-border p-4"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -213,12 +214,7 @@ export default function HostelDetailPage() {
                         {room.roomName ? ` · ${typeLabel}` : ""}
                       </p>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={getRoomStatusColor(room.status)}
-                    >
-                      {room.status}
-                    </Badge>
+                    <StatusBadge registry={ROOM_STATUS} value={room.status} size="sm" />
                   </div>
 
                   {room.description && (
@@ -248,8 +244,11 @@ export default function HostelDetailPage() {
                   </div>
 
                   <div className="mt-auto flex items-center justify-between pt-2">
-                    <span className="text-lg font-bold">
-                      ${room.price}/month
+                    <span className="font-mono text-md font-semibold">
+                      {formatCurrency(room.price)}
+                      <span className="text-sm font-normal text-muted-foreground">
+                        /month
+                      </span>
                     </span>
                     <BookingDialog room={room} hostelName={hostel.name} />
                   </div>
@@ -264,7 +263,7 @@ export default function HostelDetailPage() {
         {/* Reviews Section */}
         <div>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
+            <h2 className="text-md font-semibold">
               Reviews ({hostel.reviews.length})
             </h2>
             <ReviewForm hostelId={hostel.id} onReviewAdded={fetchHostel} />
@@ -293,7 +292,7 @@ export default function HostelDetailPage() {
                           key={i}
                           className={`h-4 w-4 ${
                             i < review.rating
-                              ? "fill-yellow-400 text-yellow-400"
+                              ? "fill-warning text-warning"
                               : "text-muted-foreground/30"
                           }`}
                         />
@@ -310,7 +309,7 @@ export default function HostelDetailPage() {
             )}
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

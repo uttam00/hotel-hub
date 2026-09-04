@@ -1,23 +1,52 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
+  Bell,
+  BellOff,
+  CalendarCheck,
+  CheckCheck,
+  CreditCard,
+  Info,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { EmptyState } from "@/components/ui/empty-state";
 import { notificationApi } from "@/services/api";
-import { Notification } from "@/types";
+import { formatRelativeDay, formatTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type { Notification } from "@/types";
+
+/**
+ * The notification centre (§20).
+ *
+ * An operations inbox, not a social feed: each entry is typed, carries the icon
+ * of the thing it concerns, and states when it happened. Unread items are
+ * marked with a rule down the left edge and a dot — not just a tinted
+ * background, which disappears against the dark theme.
+ */
+
+const TYPE_META: Record<
+  string,
+  { icon: React.ComponentType<{ className?: string }>; tone: string; label: string }
+> = {
+  PAYMENT: { icon: CreditCard, tone: "text-success", label: "Payment" },
+  BOOKING: { icon: CalendarCheck, tone: "text-info", label: "Booking" },
+  SUBSCRIPTION: { icon: Wallet, tone: "text-warning", label: "Subscription" },
+  VERIFICATION: { icon: ShieldCheck, tone: "text-primary", label: "Verification" },
+  GENERAL: { icon: Info, tone: "text-muted-foreground", label: "Notice" },
+};
 
 export function NotificationBell() {
   const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
     if (!session) return;
@@ -26,87 +55,129 @@ export function NotificationBell() {
       try {
         const data = await notificationApi.getAll();
         setNotifications(data);
-        setUnreadCount(data.filter((n: Notification) => !n.read).length);
       } catch {
-        // Silently fail — notifications are non-critical
+        // Non-critical: a failed poll should never surface an error to someone
+        // in the middle of another task.
       }
     };
 
     fetchNotifications();
-    // Poll every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [session]);
 
-  const handleMarkAsRead = async (id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
+    // Optimistic: the dot disappears immediately, and a failed request simply
+    // leaves the server state to be corrected by the next poll.
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     try {
       await notificationApi.markAsRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch {
-      // Silently fail
+      /* next poll reconciles */
     }
-  };
+  }, []);
+
+  const markAllAsRead = useCallback(async () => {
+    const unread = notifications.filter((n) => !n.read);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    await Promise.allSettled(unread.map((n) => notificationApi.markAsRead(n.id)));
+  }, [notifications]);
 
   if (!session) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="relative"
+          aria-label={
+            unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"
+          }
+        >
+          <Bell className="size-4" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
+            <span className="absolute right-1 top-1 flex size-1.5 rounded-full bg-danger ring-2 ring-card" />
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-3 border-b">
-          <h4 className="font-semibold text-sm">Notifications</h4>
-          <p className="text-xs text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
-          </p>
-        </div>
-        <ScrollArea className="h-[300px]">
-          {notifications.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No notifications yet
-            </div>
-          ) : (
-            <div className="divide-y">
-              {notifications.map((notification) => (
-                <button
-                  key={notification.id}
-                  className={`w-full text-left p-3 hover:bg-muted/50 transition-colors ${
-                    !notification.read ? "bg-primary/5" : ""
-                  }`}
-                  onClick={() => {
-                    if (!notification.read) handleMarkAsRead(notification.id);
-                  }}
-                >
-                  <div className="flex items-start gap-2">
-                    {!notification.read && (
-                      <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                    )}
-                    <div className={!notification.read ? "" : "ml-4"}>
-                      <p className="text-sm font-medium">{notification.title}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(notification.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+
+      <PopoverContent className="w-[22rem] p-0" align="end">
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <div>
+            <h2 className="text-sm font-semibold">Notifications</h2>
+            <p className="text-xs text-muted-foreground">
+              {unreadCount > 0 ? `${unreadCount} unread` : "Everything is read"}
+            </p>
+          </div>
+          {unreadCount > 0 && (
+            <Button variant="ghost" size="xs" onClick={markAllAsRead}>
+              <CheckCheck className="size-3.5" />
+              Mark all read
+            </Button>
           )}
-        </ScrollArea>
+        </div>
+
+        <div className="max-h-[22rem] overflow-y-auto">
+          {notifications.length === 0 ? (
+            <EmptyState
+              variant="inline"
+              icon={BellOff}
+              title="Nothing needs your attention"
+              description="Payment, booking and verification updates will appear here."
+            />
+          ) : (
+            <ul className="divide-y divide-border">
+              {notifications.map((notification) => {
+                const meta = TYPE_META[notification.type] ?? TYPE_META.GENERAL;
+                const Icon = meta.icon;
+                return (
+                  <li key={notification.id}>
+                    <button
+                      type="button"
+                      onClick={() => !notification.read && markAsRead(notification.id)}
+                      className={cn(
+                        "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-ui hover:bg-muted/60",
+                        !notification.read && "bg-primary-subtle/40"
+                      )}
+                    >
+                      {!notification.read && (
+                        <span
+                          className="absolute inset-y-0 left-0 w-0.5 bg-primary"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <Icon className={cn("mt-0.5 size-4 shrink-0", meta.tone)} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p
+                            className={cn(
+                              "truncate text-sm",
+                              notification.read ? "text-foreground" : "font-medium text-foreground"
+                            )}
+                          >
+                            {notification.title}
+                          </p>
+                          {!notification.read && (
+                            <span className="sr-only">Unread</span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                          {notification.message}
+                        </p>
+                        <p className="mt-1 text-2xs text-faint">
+                          {formatRelativeDay(notification.createdAt)} ·{" "}
+                          {formatTime(notification.createdAt)}
+                        </p>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

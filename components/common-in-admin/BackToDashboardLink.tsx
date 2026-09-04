@@ -2,19 +2,29 @@
 
 import { ArrowLeft } from "lucide-react";
 import { Role } from "@prisma/client";
+
 import { SidebarNavLink } from "@/components/common-in-admin/SidebarNavLink";
 import { getDashboardPath } from "@/lib/route-access";
 
-// Split out as its own client component because AdminLayoutShell (its only
-// caller) is a Server Component — passing the ArrowLeft icon reference
-// straight into the client-side SidebarNavLink from there crosses the
-// server/client boundary with a non-serializable value ("Only plain objects
-// can be passed to Client Components from Server Components"). Keeping the
-// icon entirely inside a client component avoids that.
-export function BackToDashboardLink({ role }: { role: Role }) {
+/**
+ * Pinned escape hatch for pages whose sidebar shows a section nav instead of
+ * the main one (e.g. /profile), where there would otherwise be no way back to
+ * the dashboard from the sidebar at all.
+ */
+export function BackToDashboardLink({
+  role,
+  collapsed = false,
+}: {
+  role: Role;
+  collapsed?: boolean;
+}) {
   return (
-    <div className="border-t border-border/40 p-2">
-      <SidebarNavLink href={getDashboardPath(role)} icon={ArrowLeft} label="Back to Dashboard" active={false} />
-    </div>
+    <SidebarNavLink
+      href={getDashboardPath(role)}
+      icon={ArrowLeft}
+      label="Back to dashboard"
+      active={false}
+      collapsed={collapsed}
+    />
   );
 }

@@ -2,9 +2,320 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui,
-    "Segoe UI", Helvetica, Arial, sans-serif;
+/* ============================================================================
+   HostelHub — "Plan View" design system
+   ----------------------------------------------------------------------------
+   The visual language borrows from architectural drawings rather than from
+   consumer mobile UI. Structure comes from hairline rules, alignment and
+   density — not from blur, translucency or floating shadows. The one place
+   depth is allowed is genuinely-layered surfaces (popovers, drawers, modals).
+
+   Hierarchy mirrors the product's own hierarchy:
+     Building -> Floor -> Room -> Bed -> Resident -> Stay -> Payment
+   ========================================================================= */
+
+@layer base {
+  :root {
+    /* --- Ground & surfaces -------------------------------------------------
+       A faintly warm paper-grey ground with panels sitting *lighter* on top of
+       it. Panels are separated by rules, so the tonal step is deliberately
+       small — just enough to read as a distinct plane. */
+    --background: 40 12% 96.5%;
+    --surface: 0 0% 100%;
+    --surface-raised: 0 0% 100%;
+    --surface-sunken: 40 10% 93.5%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 225 20% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 20% 14%;
+
+    /* --- Ink ---------------------------------------------------------------
+       Text is a blue-black rather than pure black: it sits on a warm ground,
+       and a neutral-black would read as a hole punched in the page. */
+    --foreground: 225 20% 14%;
+    --muted: 40 10% 93.5%;
+    --muted-foreground: 225 8% 46%;
+    --faint: 225 8% 60%;
+
+    --secondary: 40 10% 93.5%;
+    --secondary-foreground: 225 20% 20%;
+    --accent: 40 10% 91.5%;
+    --accent-foreground: 225 20% 20%;
+
+    /* --- Brand -------------------------------------------------------------
+       Continuous with the existing brand blue's hue family, deepened toward
+       ink-indigo so it reads architectural (drafting ink) rather than
+       iOS system-blue. Used ONLY for: active nav, primary action, focus. */
+    --primary: 227 64% 34%;
+    --primary-foreground: 40 20% 98%;
+    --primary-hover: 227 64% 28%;
+    --primary-subtle: 227 52% 95%;
+    --primary-border: 227 40% 82%;
+
+    /* --- Rules -------------------------------------------------------------
+       Two weights: `border` structures content, `border-strong` terminates a
+       region (panel edge, table outline, section boundary). */
+    --border: 40 8% 87%;
+    --border-strong: 40 8% 79%;
+    --input: 40 8% 84%;
+    --ring: 227 64% 44%;
+
+    /* --- Semantic states ---------------------------------------------------
+       Each has a foreground (text/icon), a subtle wash, and a border so a
+       status can be conveyed by shape+icon+label, never by hue alone. */
+    --success: 158 64% 26%;
+    --success-subtle: 158 44% 94%;
+    --success-border: 158 34% 78%;
+
+    --warning: 32 81% 33%;
+    --warning-subtle: 38 80% 94%;
+    --warning-border: 36 60% 76%;
+
+    --danger: 0 65% 42%;
+    --danger-subtle: 0 70% 96%;
+    --danger-border: 0 55% 85%;
+    --destructive: 0 65% 42%;
+    --destructive-foreground: 0 0% 100%;
+
+    --info: 205 72% 32%;
+    --info-subtle: 205 62% 95%;
+    --info-border: 205 45% 80%;
+
+    --neutral: 225 8% 40%;
+    --neutral-subtle: 40 10% 93%;
+    --neutral-border: 40 8% 83%;
+
+    /* --- Occupancy ---------------------------------------------------------
+       The bed/room state palette. Kept separate from the semantic states
+       because "occupied" is not "success" — it is simply a fact. */
+    --occ-occupied: 227 55% 46%;
+    --occ-occupied-bg: 227 48% 93%;
+    --occ-available: 158 52% 34%;
+    --occ-available-bg: 158 40% 94%;
+    --occ-maintenance: 32 74% 40%;
+    --occ-maintenance-bg: 38 76% 93%;
+    --occ-inactive: 225 6% 55%;
+    --occ-inactive-bg: 40 8% 92%;
+
+    /* --- Charts ------------------------------------------------------------
+       Ordered so the first two carry most series; sequential in lightness so
+       adjacent series stay distinguishable in greyscale too. */
+    --chart-1: 227 64% 40%;
+    --chart-2: 187 62% 33%;
+    --chart-3: 158 52% 34%;
+    --chart-4: 32 74% 45%;
+    --chart-5: 292 40% 47%;
+
+    /* --- Geometry ----------------------------------------------------------
+       Moderate radii. Drawing instruments, not pebbles. */
+    --radius: 0.375rem;
+
+    /* --- Elevation ---------------------------------------------------------
+       Two steps only, both nearly invisible. Panels do not float. */
+    --shadow-raised: 0 1px 2px 0 hsl(225 20% 14% / 0.05);
+    --shadow-overlay: 0 8px 24px -6px hsl(225 20% 14% / 0.14),
+      0 2px 6px -2px hsl(225 20% 14% / 0.08);
+
+    /* --- Sidebar -----------------------------------------------------------
+       Darker than the page, like the bound edge of a drawing set. */
+    --sidebar-background: 226 30% 13%;
+    --sidebar-foreground: 220 16% 72%;
+    --sidebar-heading: 222 12% 50%;
+    --sidebar-primary: 227 70% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 226 26% 19%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 226 22% 21%;
+    --sidebar-ring: 227 70% 62%;
+  }
+
+  .dark {
+    /* Dark mode is designed, not inverted: the ground is a cool graphite, and
+       panels step *up* from it in small increments. Borders carry more of the
+       structural work here because tonal separation is inherently weaker. */
+    --background: 226 20% 9%;
+    --surface: 226 18% 12%;
+    --surface-raised: 226 16% 15%;
+    --surface-sunken: 226 22% 7%;
+
+    --card: 226 18% 12%;
+    --card-foreground: 220 16% 93%;
+    --popover: 226 16% 15%;
+    --popover-foreground: 220 16% 93%;
+
+    --foreground: 220 16% 93%;
+    --muted: 226 16% 16%;
+    --muted-foreground: 220 10% 62%;
+    --faint: 220 8% 48%;
+
+    --secondary: 226 16% 17%;
+    --secondary-foreground: 220 16% 93%;
+    --accent: 226 16% 20%;
+    --accent-foreground: 220 16% 95%;
+
+    /* Ink-indigo is too dark to read on graphite — dark mode lifts the brand
+       to a lighter, slightly desaturated tint so it stays legible as text and
+       as an active-state fill. */
+    --primary: 227 72% 64%;
+    --primary-foreground: 226 30% 10%;
+    --primary-hover: 227 72% 71%;
+    --primary-subtle: 227 40% 20%;
+    --primary-border: 227 40% 34%;
+
+    --border: 226 14% 21%;
+    --border-strong: 226 14% 29%;
+    --input: 226 14% 24%;
+    --ring: 227 72% 64%;
+
+    --success: 158 52% 60%;
+    --success-subtle: 158 40% 15%;
+    --success-border: 158 30% 28%;
+
+    --warning: 40 82% 62%;
+    --warning-subtle: 36 45% 15%;
+    --warning-border: 36 40% 30%;
+
+    --danger: 0 72% 68%;
+    --danger-subtle: 0 45% 16%;
+    --danger-border: 0 40% 32%;
+    --destructive: 0 65% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --info: 205 72% 65%;
+    --info-subtle: 205 45% 16%;
+    --info-border: 205 40% 30%;
+
+    --neutral: 220 10% 66%;
+    --neutral-subtle: 226 14% 18%;
+    --neutral-border: 226 14% 28%;
+
+    --occ-occupied: 227 68% 66%;
+    --occ-occupied-bg: 227 40% 22%;
+    --occ-available: 158 48% 55%;
+    --occ-available-bg: 158 32% 18%;
+    --occ-maintenance: 38 76% 60%;
+    --occ-maintenance-bg: 36 40% 19%;
+    --occ-inactive: 220 8% 50%;
+    --occ-inactive-bg: 226 14% 18%;
+
+    --chart-1: 227 72% 64%;
+    --chart-2: 187 60% 52%;
+    --chart-3: 158 48% 55%;
+    --chart-4: 38 76% 60%;
+    --chart-5: 292 52% 68%;
+
+    --shadow-raised: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
+    --shadow-overlay: 0 8px 24px -6px hsl(0 0% 0% / 0.6),
+      0 2px 6px -2px hsl(0 0% 0% / 0.4);
+
+    /* In dark mode the sidebar is *darker* than the content rather than
+       lighter — same relationship as light mode, so the shell keeps its
+       identity instead of flipping. */
+    --sidebar-background: 226 24% 7%;
+    --sidebar-foreground: 220 14% 68%;
+    --sidebar-heading: 220 10% 44%;
+    --sidebar-primary: 227 72% 66%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 226 18% 14%;
+    --sidebar-accent-foreground: 220 16% 95%;
+    --sidebar-border: 226 16% 16%;
+    --sidebar-ring: 227 72% 66%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* Tabular figures and slashed zero globally: this is an operations product
+       where numbers sit in columns and must align and be unambiguous. */
+    font-feature-settings: "tnum" 1, "cv05" 1, "ss01" 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Prose-ish running text is the exception — proportional figures read
+     better mid-sentence. Opt in explicitly. */
+  .text-proportional {
+    font-feature-settings: "cv05" 1;
+    font-variant-numeric: normal;
+  }
+
+  /* A visible, consistent focus ring on every interactive element. Uses
+     :focus-visible so it appears for keyboard users without following the
+     mouse around. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+  }
+
+  /* Scrollbars sized down to match the drafting aesthetic. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border-strong)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border-strong));
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer components {
+  /* --- Panel -----------------------------------------------------------
+     The workhorse container. A bordered plane on the ground — no shadow,
+     no blur, no lift on hover. Everything in the app is built from these. */
+  .panel {
+    @apply rounded-md border border-border bg-card;
+  }
+
+  /* Section label above a group of controls or a panel. Small, spaced,
+     uppercase — the annotation voice on a drawing. */
+  .label-annotation {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  /* Identifiers — room numbers, bed slots, booking refs. Monospaced so they
+     read as coordinates rather than as words. */
+  .identifier {
+    @apply font-mono text-[0.8125rem] tracking-tight;
+  }
+
+  /* --- Blueprint grid --------------------------------------------------
+     A faint drafting grid used sparingly as a backdrop for the occupancy
+     plan and empty states. Pure CSS, no image request. */
+  .blueprint-grid {
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--border) / 0.6) 1px,
+        transparent 1px
+      ),
+      linear-gradient(to bottom, hsl(var(--border) / 0.6) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
 }
 
 @layer utilities {
@@ -12,53 +323,27 @@ body {
     text-wrap: balance;
   }
 
-  /* Shared timing for every glass hover/press/open transition, per the
-     Liquid Glass spec's cubic-bezier easing — one class instead of
-     repeating the timing function on every interactive component. */
-  .transition-glass {
-    transition-duration: 300ms;
-    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Standard timing for state transitions. Short and linear-ish: motion here
+     confirms a change, it does not perform. */
+  .transition-ui {
+    transition-property: color, background-color, border-color, opacity,
+      box-shadow, transform;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
   }
-}
 
-/* Soft, fixed decorative background: a few large blurred color blobs behind
-   all content, giving the "depth behind glass" layer the spec calls for.
-   Pure CSS, position: fixed so it never affects layout/scroll, and it sits
-   behind everything via negative z-index — cheap to render, no JS. */
-.glass-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
+  .shadow-raised {
+    box-shadow: var(--shadow-raised);
+  }
+  .shadow-overlay {
+    box-shadow: var(--shadow-overlay);
+  }
 
-.glass-backdrop::before,
-.glass-backdrop::after {
-  content: "";
-  position: absolute;
-  width: 60vw;
-  height: 60vw;
-  border-radius: 9999px;
-  filter: blur(120px);
-  opacity: 0.18;
-}
-
-.glass-backdrop::before {
-  top: -15vw;
-  left: -10vw;
-  background: hsl(217 91% 60%);
-}
-
-.glass-backdrop::after {
-  bottom: -20vw;
-  right: -10vw;
-  background: hsl(280 65% 65%);
-}
-
-.dark .glass-backdrop::before,
-.dark .glass-backdrop::after {
-  opacity: 0.12;
+  /* Fades the bottom of a scroll region so clipped content reads as
+     continuing rather than as ending. */
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -69,93 +354,5 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
-  }
-}
-
-@layer base {
-  :root {
-    /* Mirrors the dark theme's elevated blue-slate approach: page background
-       is a faint blue-gray so white cards/popovers read as a distinct raised
-       surface instead of matching it exactly, and primary is the same accent
-       blue used in dark mode rather than plain grayscale black. */
-    --background: 220 20% 97%;
-    --foreground: 222 20% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 20% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 20% 12%;
-    --primary: 217 91% 52%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 220 16% 93%;
-    --secondary-foreground: 222 20% 15%;
-    --muted: 220 16% 93%;
-    --muted-foreground: 220 10% 45%;
-    --accent: 220 16% 91%;
-    --accent-foreground: 222 20% 15%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 217 91% 52%;
-    --chart-1: 217 91% 52%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 1.25rem;
-    --sidebar-background: 220 20% 98%;
-    --sidebar-foreground: 222 15% 30%;
-    --sidebar-primary: 217 91% 52%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 220 16% 93%;
-    --sidebar-accent-foreground: 222 20% 15%;
-    --sidebar-border: 220 15% 88%;
-    --sidebar-ring: 217 91% 52%;
-  }
-  .dark {
-    /* Elevated blue-slate dark theme: background is the darkest layer, cards/
-       popovers sit one visible step above it instead of matching it exactly,
-       and primary is an actual accent color rather than plain grayscale. */
-    --background: 222 20% 8%;
-    --foreground: 210 20% 96%;
-    --card: 222 18% 11.5%;
-    --card-foreground: 210 20% 96%;
-    --popover: 222 18% 11.5%;
-    --popover-foreground: 210 20% 96%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 222 16% 17%;
-    --secondary-foreground: 210 20% 96%;
-    --muted: 222 16% 15%;
-    --muted-foreground: 217 14% 68%;
-    --accent: 222 16% 19%;
-    --accent-foreground: 210 20% 96%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 222 15% 19%;
-    --input: 222 15% 19%;
-    --ring: 217 91% 60%;
-    --chart-1: 217 91% 60%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 65%;
-    --chart-5: 340 75% 58%;
-    --sidebar-background: 222 22% 6.5%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 222 18% 14%;
-    --sidebar-accent-foreground: 210 20% 96%;
-    --sidebar-border: 222 15% 16%;
-    --sidebar-ring: 217 91% 60%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }

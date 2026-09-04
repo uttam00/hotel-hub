@@ -11,14 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -115,91 +107,94 @@ export function RegisterForm() {
     }
   };
 
+  // Grouped into "who you are" and "how you sign in" (§22) rather than one
+  // undifferentiated stack of five fields. Heading comes from <AuthHeader>.
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">
-          Create an account
-        </CardTitle>
-        <CardDescription className="text-center">
-          Enter your details to create your account
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Full Name</Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="John Doe"
-              required
-              value={formData.name}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="m@example.com"
-              required
-              value={formData.email}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="role">I am a</Label>
-            <Select value={formData.role} onValueChange={handleRoleChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select your role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="STUDENT">Student</SelectItem>
-                <SelectItem value="HOSTEL_ADMIN">
-                  Hostel Administrator
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <BrandSpinner size="sm" className="mr-2" />
-                Creating account...
-              </>
-            ) : (
-              "Create account"
-            )}
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <section className="space-y-3">
+        <h2 className="label-annotation">About you</h2>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Full name</Label>
+          <Input
+            id="name"
+            name="name"
+            autoComplete="name"
+            placeholder="Rahul Sharma"
+            required
+            value={formData.name}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="role">I am a</Label>
+          <Select value={formData.role} onValueChange={handleRoleChange}>
+            <SelectTrigger id="role">
+              <SelectValue placeholder="Select your role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="STUDENT">Student looking for a hostel</SelectItem>
+              <SelectItem value="HOSTEL_ADMIN">Hostel owner or warden</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="label-annotation">Sign-in details</h2>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="rahul.sharma@example.com"
+            required
+            value={formData.email}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={formData.password}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <Input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+            value={formData.confirmPassword}
+            onChange={handleChange}
+          />
+        </div>
+      </section>
+
+      <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <BrandSpinner size="sm" />
+            Creating account…
+          </>
+        ) : (
+          "Create account"
+        )}
+      </Button>
+    </form>
   );
 }

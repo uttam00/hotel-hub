@@ -1,23 +1,35 @@
 import type React from "react";
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { GoogleMapsProvider } from "@/components/providers/google-maps-provider";
 import { ChunkErrorReload } from "@/components/providers/chunk-error-reload";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
+import { SiteChrome } from "@/components/layout/site-chrome";
 import { Toaster } from "@/components/ui/sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+// Identifiers (room numbers, bed slots, booking refs, amounts in tables) are
+// set in mono so they read as coordinates rather than as prose.
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500", "600"],
+});
 
 export const metadata: Metadata = {
-  title: "HostelHub - Student Accommodation Management",
-  description: "Find and manage student hostels and accommodations",
-  generator: "v0.dev",
+  title: "HostelHub — Hostel Operations",
+  description:
+    "Run your hostel end to end: occupancy, residents, collections and daily operations in one place.",
 };
 
 export default async function RootLayout({
@@ -34,7 +46,15 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${mono.variable} font-sans`}>
+        {/* Keyboard users land here first — the console's sidebar is long, and
+            skipping it is the difference between 1 tab and 30 to reach work. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:border focus:border-border-strong focus:bg-card focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-overlay"
+        >
+          Skip to content
+        </a>
         <ChunkErrorReload />
         <SessionProvider session={session}>
           <ThemeProvider
@@ -44,15 +64,8 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <GoogleMapsProvider>
-              <div className="glass-backdrop" aria-hidden="true" />
-              <div className="min-h-screen flex flex-col">
-                <Header />
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex-1">
-                  {children}
-                </div>
-                <Footer />
-                <Toaster />
-              </div>
+              <SiteChrome>{children}</SiteChrome>
+              <Toaster />
             </GoogleMapsProvider>
           </ThemeProvider>
         </SessionProvider>

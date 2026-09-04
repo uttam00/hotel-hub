@@ -23,15 +23,21 @@ export function SubscriptionBanner() {
   if (!isLimited) return null;
 
   return (
-    <div className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-      <div className="flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-        <span>
+    // A full-width band directly under the console header rather than a card in
+    // the content flow — a degraded account is a property of the whole session,
+    // not of the page you happen to be on.
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-warning-border bg-warning-subtle px-4 py-2 text-sm lg:px-6">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+        <span className="text-foreground">
           Your subscription isn&apos;t active. Existing data stays visible, but accepting new
           bookings, posting notices, and adding rooms are paused until you renew.
         </span>
       </div>
-      <Link href="/hostel-admin/billing" className="shrink-0 font-medium underline underline-offset-4">
+      <Link
+        href="/hostel-admin/billing"
+        className="shrink-0 rounded-sm font-medium text-warning underline underline-offset-4 transition-ui hover:text-foreground"
+      >
         Renew now
       </Link>
     </div>

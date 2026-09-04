@@ -1,42 +1,32 @@
 import * as React from "react";
-import { Eye, EyeOff } from "lucide-react"; // Eye icons
+
 import { cn } from "@/lib/utils";
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
-
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
+/**
+ * 36px control height matches Button's default, so inputs and buttons sit flush
+ * on a single toolbar line. Focus is a ring plus a border colour change — the
+ * border alone is too quiet against a bordered panel.
+ */
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
-    const [showPassword, setShowPassword] = React.useState(false);
-    const isPassword = type === "password";
-
-    const togglePassword = () => setShowPassword((prev) => !prev);
-
     return (
-      <div className="relative w-full">
-        <input
-          type={isPassword && showPassword ? "text" : type}
-          className={cn(
-            "flex h-11 w-full rounded-2xl border border-border/60 bg-card/40 backdrop-blur-xl px-4 py-2 pr-10 text-sm ring-offset-background transition-glass file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary/60 focus-visible:bg-card/70 focus-visible:ring-4 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50",
-            className
-          )}
-          ref={ref}
-          {...props}
-        />
-        {isPassword && (
-          <button
-            type="button"
-            onClick={togglePassword}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            tabIndex={-1}
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-sm border border-input bg-card px-2.5 py-1.5 text-sm text-foreground transition-ui",
+          "placeholder:text-faint",
+          "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+          "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
+          "aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger/20",
+          "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
+          className
         )}
-      </div>
+        ref={ref}
+        {...props}
+      />
     );
   }
 );
-
 Input.displayName = "Input";
+
 export { Input };

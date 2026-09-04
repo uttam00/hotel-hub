@@ -1,30 +1,30 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/use-auth";
-import { updateProfileSchema } from "@/lib/validation_schema";
-import { uploadApi, userApi } from "@/services/api";
-import { X } from "lucide-react";
-import Image from "next/image";
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import { Pencil, X } from "lucide-react";
 import type { Value as E164Number } from "react-phone-number-input";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Field, FieldList, Panel, PanelHeader } from "@/components/ui/panel";
+import { useAuth } from "@/hooks/use-auth";
+import { updateProfileSchema } from "@/lib/validation_schema";
+import { uploadApi, userApi } from "@/services/api";
+import { formatPhone, initialsFromName } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
 export default function ProfileForm() {
   const { user, updateUser } = useAuth();
-  console.log("User in ProfileForm:", user);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [previewImage, setPreviewImage] = useState<string | null>(
-    user?.image ?? ""
-  );
+  const [previewImage, setPreviewImage] = useState<string | null>(user?.image ?? "");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -57,8 +57,7 @@ export default function ProfileForm() {
 
   const handlePhoneChange = (value?: E164Number) => {
     setFormData((prev) => ({ ...prev, phoneNumber: value || "" }));
-    if (formErrors.phoneNumber)
-      setFormErrors((prev) => ({ ...prev, phoneNumber: "" }));
+    if (formErrors.phoneNumber) setFormErrors((prev) => ({ ...prev, phoneNumber: "" }));
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,9 +69,7 @@ export default function ProfileForm() {
       }
       setSelectedImage(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-      };
+      reader.onloadend = () => setPreviewImage(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -88,7 +85,6 @@ export default function ProfileForm() {
     try {
       const validated = updateProfileSchema.parse(formData);
 
-      // Upload image to Cloudinary if there's a new image
       let uploadedImage = formData.image;
       if (selectedImage) {
         const data = await uploadApi.uploadImage(selectedImage, "profile");
@@ -124,43 +120,67 @@ export default function ProfileForm() {
     }
   };
 
+  /**
+   * Square avatar, left-aligned identity, values in a field list.
+   *
+   * The previous version centred a 128px circular photo above a centred name
+   * and a centred "Edit Profile" button — a consumer mobile profile screen
+   * dropped into an operations console. Everything here now sits on the same
+   * left axis as every other page.
+   */
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Profile</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="relative w-32 h-32 mb-4 group">
+    <Panel>
+      <PanelHeader
+        title="Your details"
+        description="Shown to the hostels you stay with"
+        action={
+          !isEditing ? (
+            <Button size="xs" variant="outline" onClick={() => setIsEditing(true)}>
+              <Pencil className="size-3" />
+              Edit
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <div className="p-3">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="group relative size-14 shrink-0">
             {previewImage ? (
               <Image
                 key={previewImage}
                 src={previewImage}
-                alt="Profile"
+                alt=""
                 fill
-                className="rounded-full object-cover"
+                className="rounded-md border border-border object-cover"
               />
             ) : (
-              <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
-                <span className="text-2xl text-gray-500">
-                  {user?.name?.charAt(0).toUpperCase()}
-                </span>
+              <div className="flex size-14 items-center justify-center rounded-md border border-border bg-primary-subtle text-md font-semibold text-primary">
+                {initialsFromName(user?.name)}
               </div>
             )}
             {isEditing && previewImage && (
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="absolute -top-2 -right-2 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-700"
                 title="Remove image"
+                aria-label="Remove profile image"
+                className="absolute -right-1.5 -top-1.5 rounded-sm border border-danger-border bg-card p-0.5 text-danger opacity-0 transition-ui hover:bg-danger hover:text-destructive-foreground focus-visible:opacity-100 group-hover:opacity-100"
               >
-                <X className="h-4 w-4" />
+                <X className="size-3" />
               </button>
             )}
           </div>
 
+          <div className="min-w-0">
+            <p className="truncate text-md font-semibold text-foreground">
+              {user?.name || "Unnamed"}
+            </p>
+            <p className="truncate text-sm text-muted-foreground">{user?.email}</p>
+          </div>
+
           {isEditing && (
-            <div className="text-center">
+            <div className="ml-auto">
               <input
                 type="file"
                 accept="image/*"
@@ -171,94 +191,86 @@ export default function ProfileForm() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() =>
-                  document.getElementById("profile-image")?.click()
-                }
-                className="w-full"
+                size="xs"
+                onClick={() => document.getElementById("profile-image")?.click()}
               >
-                {previewImage ? "Change Profile Image" : "Add Profile Image"}
+                {previewImage ? "Change photo" : "Add photo"}
               </Button>
             </div>
           )}
-
-          <div className="text-center space-y-1">
-            <h2 className="text-xl font-semibold tracking-tight">
-              {user?.name}
-            </h2>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="text-sm text-muted-foreground">
-              {user?.phoneNumber || (
-                <span className="italic text-gray-400">No phone number</span>
-              )}
-            </p>
-          </div>
         </div>
 
         {isEditing ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="name">Name</Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Full name</Label>
               <Input
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={formErrors.name ? "border-red-500" : ""}
+                aria-invalid={!!formErrors.name}
+                aria-describedby={formErrors.name ? "name-error" : undefined}
               />
               {formErrors.name && (
-                <p className="text-red-500 text-sm">{formErrors.name}</p>
+                <p id="name-error" className="text-sm text-danger">
+                  {formErrors.name}
+                </p>
               )}
             </div>
 
-            <div>
-              <Label>Email</Label>
-              <Input value={formData.email} disabled className="bg-muted" />
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" value={formData.email} disabled />
               <p className="text-xs text-muted-foreground">
-                Email can't be changed
+                Your email is how you sign in and can&apos;t be changed here.
               </p>
             </div>
 
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="phoneNumber">Phone</Label>
-              <div
-                className={`w-full ${
-                  formErrors.phoneNumber ? "border-red-500" : ""
-                }`}
-              >
-                <PhoneInput
-                  international
-                  countryCallingCodeEditable={false}
-                  defaultCountry="IN"
-                  placeholder="Enter phone number"
-                  value={formData.phoneNumber}
-                  onChange={handlePhoneChange}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2"
-                />
-              </div>
+              <PhoneInput
+                id="phoneNumber"
+                international
+                countryCallingCodeEditable={false}
+                defaultCountry="IN"
+                placeholder="Enter phone number"
+                value={formData.phoneNumber}
+                onChange={handlePhoneChange}
+                className={cn(
+                  "flex h-9 w-full rounded-sm border bg-card px-2.5 py-1.5 text-sm transition-ui",
+                  "[&_input]:bg-transparent [&_input]:outline-none",
+                  formErrors.phoneNumber ? "border-danger" : "border-input"
+                )}
+              />
               {formErrors.phoneNumber && (
-                <p className="text-red-500 text-sm">{formErrors.phoneNumber}</p>
+                <p className="text-sm text-danger">{formErrors.phoneNumber}</p>
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 border-t border-border pt-3">
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save"}
+                {isLoading ? "Saving…" : "Save changes"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditing(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
             </div>
           </form>
         ) : (
-          <div className="text-center">
-            <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-          </div>
+          <FieldList className="border-t border-border">
+            <Field label="Full name">{user?.name || "—"}</Field>
+            <Field label="Email">{user?.email || "—"}</Field>
+            <Field label="Phone">
+              {user?.phoneNumber ? (
+                formatPhone(user.phoneNumber)
+              ) : (
+                <span className="text-muted-foreground">Not added yet</span>
+              )}
+            </Field>
+          </FieldList>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </Panel>
   );
 }

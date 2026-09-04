@@ -1,23 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { CalendarDays, MapPin } from "lucide-react";
+
+import { PageHeader } from "@/components/layout/page-header";
+import { Panel, PanelHeader } from "@/components/ui/panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableScroller,
+} from "@/components/ui/table";
+import { BOOKING_STATUS, StatusBadge } from "@/components/ui/status-badge";
 import { bookingApi } from "@/services/api";
-import { BookingDetails } from "@/types";
-import { getBookingStatusColor } from "@/lib/status-colors";
-import { Calendar, MapPin, Home, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { formatCurrency, formatDate } from "@/lib/format";
+import type { BookingDetails } from "@/types";
 
 export default function StudentBookingsPage() {
   const { data: session, status } = useSession();
@@ -26,124 +30,94 @@ export default function StudentBookingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    }
+    if (status === "unauthenticated") router.push("/auth/login");
   }, [status, router]);
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        setLoading(true);
-        const response = await bookingApi.getAll({});
-        setBookings(response.data || []);
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-        setBookings([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (session?.user) {
-      fetchBookings();
-    }
+    if (!session?.user) return;
+    setLoading(true);
+    bookingApi
+      .getAll({})
+      .then((response) => setBookings(response.data || []))
+      .catch(() => setBookings([]))
+      .finally(() => setLoading(false));
   }, [session]);
 
-  if (status === "loading" || loading) {
-    return <LoadingSpinner fullPage message="Loading your bookings..." />;
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-4 mb-6">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Bookings</h1>
-          <p className="text-muted-foreground">
-            View and manage your hostel bookings
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="My bookings"
+        description="Every stay on your account"
+        breadcrumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Bookings" }]}
+      />
 
-      {bookings.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No bookings yet</h3>
-            <p className="text-muted-foreground text-sm mt-1 mb-4">
-              You haven't made any bookings. Browse hostels to find your perfect stay.
-            </p>
-            <Link href="/hostels">
-              <Button>Browse Hostels</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {bookings.map((booking) => (
-            <Card key={booking.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {booking.room?.hostel?.name || "Hostel Booking"}
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3" />
-                      {booking.room?.hostel?.city}, {booking.room?.hostel?.state}
-                    </CardDescription>
-                  </div>
-                  <Badge className={getBookingStatusColor(booking.status)}>
-                    {booking.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Room</p>
-                    <p className="font-medium flex items-center gap-1">
-                      <Home className="h-3 w-3" />
-                      {booking.room?.roomType} — #{booking.room?.roomNumber}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Check-in</p>
-                    <p className="font-medium">
-                      {new Date(booking.checkIn).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Check-out</p>
-                    <p className="font-medium">
-                      {new Date(booking.checkOut).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Price</p>
-                    <p className="font-semibold text-primary">
-                      ${booking.totalPrice?.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <Panel>
+        <PanelHeader
+          title="Stays"
+          description={loading ? "Loading…" : `${bookings.length} on record`}
+          icon={CalendarDays}
+        />
+
+        {status === "loading" || loading ? (
+          <SkeletonTable rows={4} columns={5} />
+        ) : bookings.length === 0 ? (
+          <EmptyState
+            icon={CalendarDays}
+            title="No bookings yet"
+            description="Browse hostels to find a room — your stays will be listed here once booked."
+            actionLabel="Browse hostels"
+            actionHref="/hostels"
+          />
+        ) : (
+          <TableScroller>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Hostel</TableHead>
+                  <TableHead>Room</TableHead>
+                  <TableHead>Check-in</TableHead>
+                  <TableHead>Check-out</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead numeric>Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bookings.map((booking) => (
+                  <TableRow key={booking.id}>
+                    <TableCell>
+                      <p className="font-medium text-foreground">
+                        {booking.room?.hostel?.name || "Hostel booking"}
+                      </p>
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="size-3" />
+                        {booking.room?.hostel?.city}, {booking.room?.hostel?.state}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="identifier">{booking.room?.roomNumber}</span>
+                      <span className="ml-1.5 text-xs text-muted-foreground">
+                        {booking.room?.roomType}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(booking.checkIn)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(booking.checkOut)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge registry={BOOKING_STATUS} value={booking.status} size="sm" />
+                    </TableCell>
+                    <TableCell numeric className="font-medium">
+                      {formatCurrency(booking.totalPrice)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableScroller>
+        )}
+      </Panel>
     </div>
   );
 }

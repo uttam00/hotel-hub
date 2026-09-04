@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -56,47 +56,44 @@ export default function ChangePasswordForm() {
   };
 
   const fieldName = [
-    {
-      id: "currentPassword",
-      value: "Current Password",
-    },
-    {
-      id: "newPassword",
-      value: "New Password",
-    },
-    {
-      id: "confirmPassword",
-      value: "Confirm Password",
-    },
+    { id: "currentPassword", value: "Current password", autoComplete: "current-password" },
+    { id: "newPassword", value: "New password", autoComplete: "new-password" },
+    { id: "confirmPassword", value: "Confirm new password", autoComplete: "new-password" },
   ];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Change Password</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {fieldName.map(({ id, value }) => (
-            <div key={id}>
-              <Label htmlFor={id}>{value}</Label>
-              <Input
-                id={id}
-                name={id}
-                type="password"
-                value={(passwordData as any)[id]}
-                onChange={handleChange}
-                className={errors[id] ? "border-red-500" : ""}
-              />
-              {errors[id] && (
-                <p className="text-sm text-red-500">{errors[id]}</p>
-              )}
-            </div>
-          ))}
+    <Panel>
+      <PanelHeader
+        title="Change password"
+        description="You'll stay signed in on this device"
+      />
+      <form onSubmit={handleSubmit} className="space-y-4 p-3">
+        {fieldName.map(({ id, value, autoComplete }) => (
+          <div key={id} className="space-y-1.5">
+            <Label htmlFor={id}>{value}</Label>
+            <Input
+              id={id}
+              name={id}
+              type="password"
+              autoComplete={autoComplete}
+              value={(passwordData as any)[id]}
+              onChange={handleChange}
+              aria-invalid={!!errors[id]}
+              aria-describedby={errors[id] ? `${id}-error` : undefined}
+            />
+            {errors[id] && (
+              <p id={`${id}-error`} className="text-sm text-danger">
+                {errors[id]}
+              </p>
+            )}
+          </div>
+        ))}
+        <div className="border-t border-border pt-3">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Changing..." : "Change Password"}
+            {isLoading ? "Changing…" : "Change password"}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      </form>
+    </Panel>
   );
 }

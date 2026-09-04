@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Panel, PanelHeader } from "@/components/ui/panel";
+import { Badge } from "@/components/ui/badge";
+import { formatPhone } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash } from "lucide-react";
+import { Contact, Trash } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { userApi } from "@/services/api";
 import type { EmergencyContact } from "@/services/api/user";
@@ -59,63 +61,101 @@ export default function EmergencyContactsForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Emergency Contacts</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="flex flex-col gap-4">
+      <Panel>
+        <PanelHeader
+          title="Emergency contacts"
+          description="Who your hostel should call if something happens"
+          icon={Contact}
+        />
         {loading ? null : contacts.length === 0 ? (
-          <EmptyState title="No emergency contacts yet" description="Add a parent or guardian your hostel can reach in an emergency." />
+          <EmptyState
+            variant="inline"
+            icon={Contact}
+            title="No emergency contacts yet"
+            description="Add a parent or guardian your hostel can reach in an emergency."
+          />
         ) : (
-          <div className="space-y-2">
+          <ul className="divide-y divide-border">
             {contacts.map((contact) => (
-              <div key={contact.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <p className="font-medium">
-                    {contact.name} {contact.isPrimary && <span className="text-xs text-primary">(Primary)</span>}
+              <li key={contact.id} className="flex items-center gap-3 px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                    {contact.name}
+                    {contact.isPrimary && <Badge variant="default">Primary</Badge>}
                   </p>
-                  <p className="text-sm text-muted-foreground">{contact.relation} · {contact.phone}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {contact.relation} · {formatPhone(contact.phone)}
+                  </p>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => handleRemove(contact.id)}>
-                  <Trash className="h-4 w-4 text-destructive" />
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label={`Remove ${contact.name}`}
+                  onClick={() => handleRemove(contact.id)}
+                >
+                  <Trash className="size-3.5 text-muted-foreground" />
                 </Button>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
+      </Panel>
 
-        <div className="space-y-3 border-t pt-4">
-          <p className="text-sm font-medium">Add a Contact</p>
+      <Panel>
+        <PanelHeader title="Add a contact" />
+        <div className="space-y-4 p-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Relation</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="ec-name">Name</Label>
               <Input
+                id="ec-name"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Sunita Sharma"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ec-phone">Phone</Label>
+              <Input
+                id="ec-phone"
+                type="tel"
+                inputMode="tel"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                placeholder="+91 98765 43210"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ec-relation">Relation</Label>
+              <Input
+                id="ec-relation"
                 value={form.relation}
                 onChange={(e) => setForm((f) => ({ ...f, relation: e.target.value }))}
-                placeholder="Father, Mother, Guardian..."
+                placeholder="Mother, father, guardian…"
               />
             </div>
-            <div className="flex items-center gap-2 pt-6">
+            <label
+              htmlFor="ec-primary"
+              className="flex items-center gap-2 self-end pb-2 text-sm"
+            >
               <Checkbox
+                id="ec-primary"
                 checked={form.isPrimary}
-                onCheckedChange={(checked) => setForm((f) => ({ ...f, isPrimary: !!checked }))}
+                onCheckedChange={(checked) =>
+                  setForm((f) => ({ ...f, isPrimary: !!checked }))
+                }
               />
-              <Label className="font-normal">Set as primary contact</Label>
-            </div>
+              Set as primary contact
+            </label>
           </div>
-          <Button onClick={handleAdd} disabled={submitting}>
-            {submitting ? "Adding..." : "Add Contact"}
-          </Button>
+          <div className="border-t border-border pt-3">
+            <Button onClick={handleAdd} disabled={submitting}>
+              {submitting ? "Adding…" : "Add contact"}
+            </Button>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </Panel>
+    </div>
   );
 }

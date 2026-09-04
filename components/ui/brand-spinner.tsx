@@ -1,17 +1,19 @@
-import { Building } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SIZES = {
-  sm: { ring: "h-4 w-4", icon: "h-2 w-2", border: "border-2" },
-  md: { ring: "h-8 w-8", icon: "h-3.5 w-3.5", border: "border-2" },
-  lg: { ring: "h-12 w-12", icon: "h-5 w-5", border: "border-[3px]" },
+  sm: { box: "h-3 w-4", gap: "gap-[2px]" },
+  md: { box: "h-5 w-6", gap: "gap-[3px]" },
+  lg: { box: "h-8 w-10", gap: "gap-1" },
 } as const;
 
 /**
- * HostelHub's small branded loading indicator — a spinning ring around the
- * brand mark. Uses currentColor throughout (not a hardcoded text-primary) so
- * it stays visible when dropped into a button of any variant — pass a
- * text-* className to set the color explicitly for standalone use.
+ * The branded loading indicator: three stacked bars lighting in sequence, read
+ * as floors of a building filling up. It replaces the previous spinning ring —
+ * a rotating circle is the most generic loader there is, and this one says
+ * something about the product while occupying the same space.
+ *
+ * Uses currentColor so it stays visible inside a button of any variant; pass a
+ * text-* class to colour it for standalone use.
  */
 export function BrandSpinner({
   size = "md",
@@ -20,19 +22,23 @@ export function BrandSpinner({
   size?: keyof typeof SIZES;
   className?: string;
 }) {
-  const { ring, icon, border } = SIZES[size];
+  const { box, gap } = SIZES[size];
   return (
     <span
-      className={cn("relative inline-flex shrink-0 items-center justify-center", ring, className)}
+      className={cn("inline-flex shrink-0 flex-col-reverse justify-between", box, gap, className)}
+      role="status"
     >
-      <span className={cn("absolute inset-0 rounded-full border-current opacity-25", border)} />
-      <span
-        className={cn(
-          "absolute inset-0 animate-spin rounded-full border-transparent border-t-current",
-          border
-        )}
-      />
-      <Building className={icon} />
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="w-full flex-1 rounded-[1px] bg-current"
+          style={{
+            animation: "fade-in 0.9s ease-in-out infinite alternate",
+            animationDelay: `${i * 0.18}s`,
+            opacity: 0.25,
+          }}
+        />
+      ))}
       <span className="sr-only">Loading</span>
     </span>
   );

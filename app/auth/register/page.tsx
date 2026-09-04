@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AuthHeader } from "@/components/auth/auth-header";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { RegisterForm } from "@/components/auth/register-form";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -33,20 +34,24 @@ export default function RegisterPage() {
   }, [session, status, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
-      <div className="w-full max-w-md space-y-6">
-        <AuthHeader heading="Create an account" description="Enter your details to create your account" />
-        <RegisterForm />
-        <div className="text-center text-sm">
+    <AuthShell
+      footer={
+        <>
           Already have an account?{" "}
           <Link
             href="/auth/login"
-            className="text-primary underline-offset-4 hover:underline"
+            className="rounded-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            Log in
+            Sign in
           </Link>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <AuthHeader
+        heading="Create your account"
+        description="Find a hostel, book a room, and manage your stay in one place."
+      />
+      <RegisterForm />
+    </AuthShell>
   );
 }

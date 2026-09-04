@@ -11,6 +11,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Panel, PanelHeader } from "@/components/ui/panel";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/layout/page-header";
+import { initialsFromName } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandItem } from "@/components/ui/command";
 import {
@@ -31,7 +38,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { TableLoader } from "@/components/ui/loader";
 import {
   Popover,
   PopoverContent,
@@ -44,6 +50,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableScroller,
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import {
@@ -53,7 +60,7 @@ import {
 import { adminApi, hostelApi } from "@/services/api";
 import { Hostel, HostelAdmin, HostelStatus } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus } from "lucide-react";
+import { Plus, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -174,16 +181,19 @@ export default function AdminsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Manage Hostel Admins</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              Add New Admin
-            </Button>
-          </DialogTrigger>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Hostel admins"
+        description="Operators who run properties on the platform"
+        breadcrumbs={[{ label: "Network" }, { label: "Hostel admins" }]}
+        action={
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="size-3.5" />
+                Add admin
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Admin</DialogTitle>
@@ -235,81 +245,100 @@ export default function AdminsPage() {
                     </FormItem>
                   )}
                 /> */}
-                <DialogFooter>
-                  <Button type="submit">Create Admin</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
+                  <DialogFooter>
+                    <Button type="submit">Create admin</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
-      <div className="rounded-md border overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[150px]">Name</TableHead>
-              <TableHead className="min-w-[200px]">Email</TableHead>
-              <TableHead className="min-w-[200px]">Assigned Hostels</TableHead>
-              <TableHead className="min-w-[200px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={4}>
-                  <TableLoader />
-                </TableCell>
-              </TableRow>
-            ) : admins.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  No admins found
-                </TableCell>
-              </TableRow>
-            ) : (
-              admins.map((admin) => (
-                <TableRow key={admin.id}>
-                  <TableCell className="font-medium">{admin.name}</TableCell>
-                  <TableCell className="break-all">{admin.email}</TableCell>
-                  <TableCell className="max-w-[200px]">
-                    <div className="truncate">
-                      {admin.hostels.map((hostel) => hostel.name).join(", ") ||
-                        "Not assigned"}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                          setSelectedAdmin(admin);
-                          setAssignDialogOpen(true);
-                        }}
-                      >
-                        Assign Hostels
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                          setAdminToDelete(admin);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
+      <Panel>
+        <PanelHeader
+          title="Administrators"
+          description={loading ? "Loading…" : `${admins.length} on the platform`}
+          icon={ShieldCheck}
+        />
+        {loading ? (
+          <SkeletonTable rows={5} columns={4} />
+        ) : admins.length === 0 ? (
+          <EmptyState
+            icon={ShieldCheck}
+            title="No hostel admins yet"
+            description="Create an admin account and assign it to a property so someone can run it."
+            actionLabel="Add an admin"
+            onAction={() => setDialogOpen(true)}
+          />
+        ) : (
+          <TableScroller maxHeight="calc(100vh - 20rem)">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Admin</TableHead>
+                  <TableHead>Assigned properties</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {admins.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <Avatar className="size-7">
+                          <AvatarFallback>{initialsFromName(admin.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{admin.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{admin.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {admin.hostels.length === 0 ? (
+                        <span className="text-sm text-muted-foreground">Not assigned</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {admin.hostels.map((hostel) => (
+                            <Badge key={hostel.id} variant="secondary">
+                              {hostel.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          onClick={() => {
+                            setSelectedAdmin(admin);
+                            setAssignDialogOpen(true);
+                          }}
+                        >
+                          Assign
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="xs"
+                          onClick={() => {
+                            setAdminToDelete(admin);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableScroller>
+        )}
+      </Panel>
 
       <Dialog
         open={assignDialogOpen}

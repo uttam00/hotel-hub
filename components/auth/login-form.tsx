@@ -10,14 +10,6 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { setUserCookie } from "@/lib/cookies";
 import Link from "next/link";
@@ -101,63 +93,55 @@ export function LoginForm() {
     }
   };
 
+  // The heading and description come from <AuthHeader> on the page, so the
+  // form renders bare rather than repeating them inside a card.
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">
-          Log in to your account
-        </CardTitle>
-        <CardDescription className="text-center">
-          Enter your email and password to access your account
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="m@example.com"
-              required
-              value={formData.email}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                href="/auth/forgot-password"
-                className="text-sm text-muted-foreground hover:text-primary underline-offset-4 hover:underline"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <BrandSpinner size="sm" className="mr-2" />
-                Logging in...
-              </>
-            ) : (
-              "Log in"
-            )}
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          required
+          value={formData.email}
+          onChange={handleChange}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="password">Password</Label>
+          <Link
+            href="/auth/forgot-password"
+            className="rounded-sm text-sm text-muted-foreground underline-offset-4 transition-ui hover:text-primary hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={formData.password}
+          onChange={handleChange}
+        />
+      </div>
+
+      <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <BrandSpinner size="sm" />
+            Signing in…
+          </>
+        ) : (
+          "Sign in"
+        )}
+      </Button>
+    </form>
   );
 }

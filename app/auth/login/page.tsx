@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthHeader } from "@/components/auth/auth-header";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -29,20 +30,24 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
-      <div className="w-full max-w-md space-y-6">
-        <AuthHeader heading="Welcome back" description="Enter your credentials to access your account" />
-        <LoginForm />
-        <div className="text-center text-sm">
+    <AuthShell
+      footer={
+        <>
           Don&apos;t have an account?{" "}
           <Link
             href="/auth/register"
-            className="text-primary underline-offset-4 hover:underline"
+            className="rounded-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            Sign up
+            Create one
           </Link>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <AuthHeader
+        heading="Welcome back"
+        description="Sign in to manage your stay or your hostel."
+      />
+      <LoginForm />
+    </AuthShell>
   );
 }

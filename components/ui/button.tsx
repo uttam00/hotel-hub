@@ -4,28 +4,47 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Buttons are rectangular with a 4px radius — instruments, not pills. There is
+ * no lift-on-hover and no scale-on-press: in a console where a user clicks
+ * hundreds of times an hour, movement under the cursor is noise. Hover changes
+ * tone only; the pressed state darkens.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:scale-100",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm text-sm font-medium transition-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
+        // The single high-emphasis action on a screen. Solid brand ink.
         default:
-          "bg-primary/90 text-primary-foreground backdrop-blur-xl shadow-glass-sm hover:bg-primary hover:shadow-glass-md hover:-translate-y-0.5 active:scale-[0.98]",
-        destructive:
-          "bg-destructive/90 text-destructive-foreground backdrop-blur-xl shadow-glass-sm hover:bg-destructive hover:shadow-glass-md hover:-translate-y-0.5 active:scale-[0.98]",
+          "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-hover",
+        // Default for most console actions: reads as a control, not a call to
+        // action, which is right when a toolbar has six of them.
         outline:
-          "border border-border/60 bg-card/40 backdrop-blur-xl hover:bg-card/70 hover:-translate-y-0.5 hover:shadow-glass-sm active:scale-[0.98]",
+          "border border-border-strong bg-card text-foreground hover:bg-muted active:bg-accent",
         secondary:
-          "bg-secondary/70 text-secondary-foreground backdrop-blur-xl hover:bg-secondary/90 hover:-translate-y-0.5 hover:shadow-glass-sm active:scale-[0.98]",
+          "bg-secondary text-secondary-foreground hover:bg-accent active:bg-accent",
         ghost:
-          "hover:bg-accent/60 hover:backdrop-blur-xl hover:text-accent-foreground active:scale-[0.98]",
-        link: "text-primary underline-offset-4 hover:underline rounded-none",
+          "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-accent",
+        // Destructive is outlined by default so it never competes visually with
+        // the primary action; the danger tone only fills in on hover. Makes
+        // deleting a deliberate act rather than an easy one.
+        destructive:
+          "border border-danger-border bg-danger-subtle text-danger hover:bg-danger hover:text-destructive-foreground hover:border-danger",
+        // For irreversible confirmations inside a dialog, where the user has
+        // already been told what will happen.
+        "destructive-solid":
+          "bg-destructive text-destructive-foreground hover:bg-danger",
+        link: "h-auto rounded-none p-0 text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-5 py-2",
-        sm: "h-9 px-4",
-        lg: "h-12 px-8 text-base",
-        icon: "h-10 w-10",
+        default: "h-9 px-3 [&_svg]:size-4",
+        sm: "h-8 px-2.5 text-sm [&_svg]:size-3.5",
+        xs: "h-7 px-2 text-xs [&_svg]:size-3.5",
+        lg: "h-10 px-4 text-md [&_svg]:size-4",
+        icon: "h-9 w-9 [&_svg]:size-4",
+        "icon-sm": "h-8 w-8 [&_svg]:size-4",
+        "icon-xs": "h-7 w-7 [&_svg]:size-3.5",
       },
     },
     defaultVariants: {

@@ -1,38 +1,61 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { User, KeyRound, Contact } from "lucide-react";
-import { SidebarNavLink } from "@/components/common-in-admin/SidebarNavLink";
+import { Contact, KeyRound, User } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 const BASE_SECTIONS = [
   { id: "profile", label: "Profile", icon: User },
-  { id: "password", label: "Change Password", icon: KeyRound },
+  { id: "password", label: "Password", icon: KeyRound },
 ];
 
-// /profile's own section nav, rendered through the same AdminLayoutShell
-// sidebar every dashboard uses (via its navContent override) — same look,
-// but never registered inside AdminNavigation, so it doesn't become a link
-// in the main dashboard sidebars.
+/**
+ * The profile page's section switcher.
+ *
+ * This used to replace the entire sidebar, which meant that opening Profile
+ * wiped out every other navigation link in the product — the console suddenly
+ * had three items in it and no way back to Residents or Payments except the
+ * one pinned "back" link. It is now an in-page tab bar, so the main navigation
+ * stays exactly where it was and only the content area changes.
+ *
+ * Still driven by the `?tab=` query parameter, so existing links keep working.
+ */
 export function ProfileNav({ showEmergency }: { showEmergency: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const active = searchParams.get("tab") ?? "profile";
 
   const sections = showEmergency
-    ? [...BASE_SECTIONS, { id: "emergency", label: "Emergency Contacts", icon: Contact }]
+    ? [...BASE_SECTIONS, { id: "emergency", label: "Emergency contacts", icon: Contact }]
     : BASE_SECTIONS;
 
   return (
-    <nav className="grid items-start px-2 text-sm font-medium">
-      {sections.map(({ id, label, icon }) => (
-        <SidebarNavLink
-          key={id}
-          href={id === "profile" ? pathname : `${pathname}?tab=${id}`}
-          icon={icon}
-          label={label}
-          active={active === id}
-        />
-      ))}
+    <nav
+      className="flex h-9 items-center gap-4 overflow-x-auto border-b border-border"
+      aria-label="Profile sections"
+    >
+      {sections.map(({ id, label, icon: Icon }) => {
+        const isActive = active === id;
+        return (
+          <Link
+            key={id}
+            href={id === "profile" ? pathname : `${pathname}?tab=${id}`}
+            aria-current={isActive ? "page" : undefined}
+            className={cn(
+              "relative -mb-px inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 text-sm font-medium transition-ui",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              isActive
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="size-4" />
+            {label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

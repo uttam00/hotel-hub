@@ -1,16 +1,29 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
+import { ArrowLeft, CheckCircle2, LinkIcon } from "lucide-react";
+
+import { AuthHeader } from "@/components/auth/auth-header";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { ArrowLeft, CheckCircle } from "lucide-react";
+import { BrandSpinner } from "@/components/ui/brand-spinner";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { authApi } from "@/services/api";
+
+const backToLogin = (
+  <Link
+    href="/auth/login"
+    className="inline-flex items-center gap-1 rounded-sm text-sm text-muted-foreground underline-offset-4 transition-ui hover:text-foreground hover:underline"
+  >
+    <ArrowLeft className="size-3.5" />
+    Back to sign in
+  </Link>
+);
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -24,21 +37,19 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Invalid Link</CardTitle>
-            <CardDescription>
-              This password reset link is invalid or has expired.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="justify-center">
-            <Link href="/auth/forgot-password">
-              <Button>Request New Link</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-      </div>
+      <AuthShell footer={backToLogin}>
+        <span className="mb-4 inline-flex size-10 items-center justify-center rounded-md border border-warning-border bg-warning-subtle">
+          <LinkIcon className="size-5 text-warning" />
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight">This link has expired</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Password reset links are single-use and time-limited. Request a fresh one and
+          it&apos;ll arrive in a moment.
+        </p>
+        <Button asChild size="lg" className="mt-5 w-full">
+          <Link href="/auth/forgot-password">Request a new link</Link>
+        </Button>
+      </AuthShell>
     );
   }
 
@@ -49,7 +60,6 @@ function ResetPasswordForm() {
       toast.error("Password must be at least 8 characters");
       return;
     }
-
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -59,10 +69,12 @@ function ResetPasswordForm() {
     try {
       await authApi.resetPassword({ token, password });
       setSuccess(true);
-      toast.success("Password reset successfully!");
+      toast.success("Password changed successfully");
       setTimeout(() => router.push("/auth/login"), 3000);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -70,78 +82,71 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <CardTitle className="text-2xl">Password Reset!</CardTitle>
-            <CardDescription>
-              Your password has been successfully changed. Redirecting to login...
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
+      <AuthShell footer={backToLogin}>
+        <span className="mb-4 inline-flex size-10 items-center justify-center rounded-md border border-success-border bg-success-subtle">
+          <CheckCircle2 className="size-5 text-success" />
+        </span>
+        <h1 className="text-2xl font-semibold tracking-tight">Password changed</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          You can now sign in with your new password. Taking you there…
+        </p>
+        <Button asChild size="lg" className="mt-5 w-full">
+          <Link href="/auth/login">Sign in now</Link>
+        </Button>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Reset Password</CardTitle>
-          <CardDescription>Enter your new password below</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Min 8 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repeat your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Resetting..." : "Reset Password"}
-            </Button>
-          </CardFooter>
-        </form>
-        <div className="pb-6 text-center">
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-primary"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back to Login
-          </Link>
+    <AuthShell footer={backToLogin}>
+      <AuthHeader
+        heading="Set a new password"
+        description="Choose something you haven't used before."
+      />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="password">New password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+          />
         </div>
-      </Card>
-    </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            placeholder="Repeat your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+        </div>
+        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          {loading ? (
+            <>
+              <BrandSpinner size="sm" />
+              Saving…
+            </>
+          ) : (
+            "Change password"
+          )}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><LoadingSpinner message="Loading..." /></div>}>
+    <Suspense fallback={<LoadingSpinner fullPage message="Loading…" />}>
       <ResetPasswordForm />
     </Suspense>
   );
