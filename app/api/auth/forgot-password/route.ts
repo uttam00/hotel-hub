@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { randomBytes } from "crypto";
 import logger from "@/lib/logger";
+import { appUrl, sendPasswordResetEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -41,35 +42,16 @@ export async function POST(req: Request) {
       },
     });
 
-    // Build reset URL
-    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}`;
+    const resetUrl = appUrl(`/auth/reset-password?token=${resetToken}`);
 
-    // Try to send email via SendGrid
-    try {
-      const sgMail = require("@sendgrid/mail");
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-      await sgMail.send({
-        to: user.email!,
-        from: process.env.FROM_EMAIL!,
-        subject: "Password Reset Request",
-        html: `
-          <p>Hello ${user.name || ""},</p>
-          <p>You requested a password reset for your account.</p>
-          <p>Click the link below to reset your password. This link expires in 1 hour.</p>
-          <p><a href="${resetUrl}">Reset Your Password</a></p>
-          <p>If you did not request this, please ignore this email.</p>
-        `,
-      });
-
-      logger.info(`Password reset email sent to ${email}`, "FORGOT_PASSWORD");
-    } catch (emailError) {
-      logger.error("Failed to send password reset email", "FORGOT_PASSWORD", emailError);
-      // In development, log the reset URL
-      if (process.env.NODE_ENV === "development") {
-        logger.info(`DEV: Reset URL: ${resetUrl}`, "FORGOT_PASSWORD");
-      }
-    }
+    // Delivery failures are logged inside the email layer and deliberately not
+    // surfaced — the response must look identical whether or not the address
+    // exists, otherwise this endpoint becomes an account-enumeration oracle.
+    await sendPasswordResetEmail({
+      to: user.email!,
+      name: user.name,
+      resetUrl,
+    });
 
     return NextResponse.json({
       message: "If an account with that email exists, a password reset link has been sent.",

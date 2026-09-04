@@ -17,6 +17,14 @@ import { Panel, PanelHeader } from "@/components/ui/panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ACCOUNT_STATUS, StatusBadge } from "@/components/ui/status-badge";
 import { initialsFromName } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandItem } from "@/components/ui/command";
@@ -60,7 +68,15 @@ import {
 import { adminApi, hostelApi } from "@/services/api";
 import { Hostel, HostelAdmin, HostelStatus } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, ShieldCheck } from "lucide-react";
+import {
+  MoreHorizontal,
+  Plus,
+  Send,
+  ShieldCheck,
+  Trash,
+  UserCheck,
+  UserX,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -77,13 +93,15 @@ export default function AdminsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [adminToDelete, setAdminToDelete] = useState<Admin | null>(null);
   const [assignHostelLoading, setAssignHostelLoading] = useState(false);
+  /** Which row currently has a status/invite request in flight. */
+  const [busyAdminId, setBusyAdminId] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof createHostelAdminSchema>>({
     resolver: zodResolver(createHostelAdminSchema),
     defaultValues: {
       name: "",
       email: "",
-      // password: "",
+      hostelIds: [],
     },
   });
 
@@ -132,9 +150,19 @@ export default function AdminsPage() {
 
   const onSubmit = async (values: z.infer<typeof createHostelAdminSchema>) => {
     try {
-      await adminApi.create(values);
+      const created = await adminApi.create(values);
 
-      toast.success("Admin created successfully");
+      // The account exists whether or not the mail went out, so say which
+      // happened — silently claiming "invitation sent" would leave the super
+      // admin waiting on an email that never left the building.
+      if (created.emailSent) {
+        toast.success(`Invitation sent to ${values.email}`);
+      } else {
+        toast.warning("Admin created, but the invitation email couldn't be sent", {
+          description: "Use “Resend invite” once email delivery is configured.",
+        });
+      }
+
       setDialogOpen(false);
       form.reset();
       fetchAdmins();
@@ -142,6 +170,36 @@ export default function AdminsPage() {
       toast.error(
         error instanceof Error ? error.message : "Something went wrong",
       );
+    }
+  };
+
+  /** Activate / deactivate an admin, or send them a fresh invitation link. */
+  const updateAdmin = async (
+    admin: Admin,
+    data: { status?: "ACTIVE" | "INACTIVE"; resendInvite?: boolean }
+  ) => {
+    setBusyAdminId(admin.id);
+    try {
+      const result = await adminApi.update(admin.id, data);
+
+      if (data.resendInvite) {
+        toast[result.emailSent ? "success" : "warning"](
+          result.emailSent
+            ? `New invitation sent to ${admin.email}`
+            : "Invitation created, but the email couldn't be sent"
+        );
+      } else {
+        toast.success(
+          data.status === "INACTIVE"
+            ? `${admin.name ?? admin.email} can no longer sign in`
+            : `${admin.name ?? admin.email} reactivated`
+        );
+      }
+      fetchAdmins();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
+    } finally {
+      setBusyAdminId(null);
     }
   };
 
@@ -196,9 +254,11 @@ export default function AdminsPage() {
             </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Admin</DialogTitle>
+              <DialogTitle>Invite a hostel admin</DialogTitle>
               <DialogDescription>
-                Create a new hostel admin account.
+                We&apos;ll email them a secure link to set their own password. The
+                account stays inactive until they do — no temporary password is
+                ever created or sent.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -226,8 +286,55 @@ export default function AdminsPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" {...field} />
+                        <Input type="email" placeholder="warden@example.com" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="hostelIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Assign properties{" "}
+                        <span className="font-normal text-muted-foreground">
+                          (optional)
+                        </span>
+                      </FormLabel>
+                      <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-sm border border-border p-2.5">
+                        {hostels.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            No active hostels to assign yet.
+                          </p>
+                        ) : (
+                          hostels.map((hostel) => {
+                            const selected = (field.value ?? []).includes(hostel.id);
+                            return (
+                              <label
+                                key={hostel.id}
+                                className="flex cursor-pointer items-center gap-2 text-sm"
+                              >
+                                <Checkbox
+                                  checked={selected}
+                                  onCheckedChange={(checked) =>
+                                    field.onChange(
+                                      checked
+                                        ? [...(field.value ?? []), hostel.id]
+                                        : (field.value ?? []).filter(
+                                            (id: string) => id !== hostel.id
+                                          )
+                                    )
+                                  }
+                                />
+                                {hostel.name}
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -246,7 +353,7 @@ export default function AdminsPage() {
                   )}
                 /> */}
                   <DialogFooter>
-                    <Button type="submit">Create admin</Button>
+                    <Button type="submit">Send invitation</Button>
                   </DialogFooter>
                 </form>
               </Form>
@@ -277,6 +384,7 @@ export default function AdminsPage() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>Admin</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Assigned properties</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -296,6 +404,13 @@ export default function AdminsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <StatusBadge
+                        registry={ACCOUNT_STATUS}
+                        value={admin.status}
+                        size="sm"
+                      />
+                    </TableCell>
+                    <TableCell>
                       {admin.hostels.length === 0 ? (
                         <span className="text-sm text-muted-foreground">Not assigned</span>
                       ) : (
@@ -313,6 +428,7 @@ export default function AdminsPage() {
                         <Button
                           variant="outline"
                           size="xs"
+                          disabled={busyAdminId === admin.id}
                           onClick={() => {
                             setSelectedAdmin(admin);
                             setAssignDialogOpen(true);
@@ -320,16 +436,60 @@ export default function AdminsPage() {
                         >
                           Assign
                         </Button>
-                        <Button
-                          variant="destructive"
-                          size="xs"
-                          onClick={() => {
-                            setAdminToDelete(admin);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          Delete
-                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              disabled={busyAdminId === admin.id}
+                            >
+                              <MoreHorizontal className="size-4" />
+                              <span className="sr-only">
+                                More actions for {admin.name ?? admin.email}
+                              </span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {/* Only meaningful while they still owe a password:
+                                a resend would otherwise reset a working account
+                                back to PENDING. */}
+                            {admin.status !== "ACTIVE" && (
+                              <DropdownMenuItem
+                                onClick={() => updateAdmin(admin, { resendInvite: true })}
+                              >
+                                <Send className="mr-2 size-3.5" />
+                                Resend invite
+                              </DropdownMenuItem>
+                            )}
+                            {admin.status === "INACTIVE" ? (
+                              <DropdownMenuItem
+                                onClick={() => updateAdmin(admin, { status: "ACTIVE" })}
+                              >
+                                <UserCheck className="mr-2 size-3.5" />
+                                Reactivate
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => updateAdmin(admin, { status: "INACTIVE" })}
+                              >
+                                <UserX className="mr-2 size-3.5" />
+                                Deactivate
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-danger focus:bg-danger-subtle focus:text-danger"
+                              onClick={() => {
+                                setAdminToDelete(admin);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash className="mr-2 size-3.5" />
+                              Delete account
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>

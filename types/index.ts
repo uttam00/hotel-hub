@@ -186,12 +186,20 @@ export type Wishlist = {
   createdAt: string;
 };
 
+export type AccountStatus = "ACTIVE" | "INACTIVE" | "PENDING";
+
 export type HostelAdmin = {
   id: string;
   name: string | null;
   email: string | null;
   role: string;
-  isVerified: boolean;
+  isVerified?: boolean;
+  /** Account lifecycle — drives the invite / activate / deactivate controls. */
+  status: AccountStatus;
+  /** True until an invited admin has chosen their own password. */
+  mustChangePassword?: boolean;
+  invitedAt?: string | null;
+  onboardingCompletedAt?: string | null;
   createdAt: string;
   hostels: Array<{ id: string; name?: string }>;
 };

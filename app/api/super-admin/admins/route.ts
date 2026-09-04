@@ -1,114 +1,142 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { z } from "zod";
+
 import prisma from "@/lib/prisma";
-import { v4 as uuidv4 } from "uuid";
-import sgMail from "@sendgrid/mail";
-import bcrypt from "bcryptjs";
+import { authzErrorResponse, requireRole } from "@/lib/authz";
+import { INVITE_TTL_HOURS, issueInviteToken } from "@/lib/invite";
+import { appUrl, sendAdminInviteEmail } from "@/lib/email";
+import logger from "@/lib/logger";
 
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || "";
+/**
+ * Hostel-admin accounts, managed by a super admin.
+ *
+ * Creation is invitation-based. The previous implementation generated a
+ * password with `uuidv4().substring(0, 12)`, stored it, and emailed it to the
+ * new admin in cleartext with nothing ever forcing a change — so a mailbox
+ * breach handed over a working admin login indefinitely. Now no password is
+ * ever created or transmitted: the account starts PENDING and the admin sets
+ * their own password through a hashed, single-use, expiring link.
+ */
 
-if (!SENDGRID_API_KEY || !FROM_EMAIL) {
-  throw new Error("Missing required environment variables for SendGrid");
-}
-
-sgMail.setApiKey(SENDGRID_API_KEY);
+const createAdminSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  /** Hostels to assign on creation. Optional — can be assigned later. */
+  hostelIds: z.array(z.string()).optional().default([]),
+  /**
+   * PENDING sends an invitation; ACTIVE is only meaningful for an account that
+   * already has a password, so creation always ends up PENDING in practice.
+   */
+  status: z.enum(["PENDING", "INACTIVE"]).optional().default("PENDING"),
+});
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || session.user.role !== "SUPER_ADMIN") {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    await requireRole("SUPER_ADMIN");
 
     const admins = await prisma.user.findMany({
-      where: {
-        role: "HOSTEL_ADMIN",
-      },
+      where: { role: "HOSTEL_ADMIN" },
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        hostels: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        status: true,
+        mustChangePassword: true,
+        invitedAt: true,
+        onboardingCompletedAt: true,
+        createdAt: true,
+        hostels: { select: { id: true, name: true } },
       },
     });
 
     return NextResponse.json(admins);
   } catch (error) {
-    console.error("[ADMINS_GET]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
+    logger.error("Failed to list admins", "ADMINS_GET", error);
+    return NextResponse.json({ error: "Failed to load admins" }, { status: 500 });
   }
 }
+
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    const tempPassword = uuidv4().substring(0, 12);
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    const superAdmin = await requireRole("SUPER_ADMIN");
 
-    if (!session || session.user.role !== "SUPER_ADMIN") {
-      return new NextResponse("Unauthorized", { status: 401 });
+    const parsed = createAdminSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.errors[0]?.message ?? "Invalid input" },
+        { status: 400 }
+      );
+    }
+    const { name, email, hostelIds, status } = parsed.data;
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "An account with that email already exists" },
+        { status: 409 }
+      );
     }
 
-    const body = await req.json();
-    const { name, email } = body;
-
-    // Validate required fields
-    if (!name || !email) {
-      return new NextResponse("Missing required fields", { status: 400 });
+    // Verify every hostel exists before creating anything, so a typo can't
+    // leave a half-assigned admin behind.
+    if (hostelIds.length > 0) {
+      const found = await prisma.hostel.count({ where: { id: { in: hostelIds } } });
+      if (found !== hostelIds.length) {
+        return NextResponse.json(
+          { error: "One or more selected hostels no longer exist" },
+          { status: 400 }
+        );
+      }
     }
 
-    // Check if email already exists
-    const existingAdmin = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingAdmin) {
-      return new NextResponse("Email already exists", { status: 400 });
-    }
-
-    // Create new admin
     const admin = await prisma.user.create({
       data: {
         name,
         email,
-        password: hashedPassword, // Note: In production, ensure password is hashed
         role: "HOSTEL_ADMIN",
+        status,
+        // No password is set at all: the account cannot be signed into until
+        // the invitation is redeemed.
+        password: null,
+        mustChangePassword: true,
+        invitedAt: status === "PENDING" ? new Date() : null,
+        hostels: hostelIds.length > 0 ? { connect: hostelIds.map((id) => ({ id })) } : undefined,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        status: true,
+        hostels: { select: { id: true, name: true } },
       },
     });
 
-    if (!admin.email) {
-      return new NextResponse("Error while generating hostel admin", {
-        status: 400,
+    let emailSent = false;
+    if (status === "PENDING") {
+      const { rawToken } = await issueInviteToken(admin.id, superAdmin.id);
+      const result = await sendAdminInviteEmail({
+        to: admin.email!,
+        name: admin.name,
+        inviteUrl: appUrl(`/auth/set-password?token=${rawToken}`),
+        hostelNames: admin.hostels.map((h) => h.name),
+        expiresInHours: INVITE_TTL_HOURS,
       });
+      emailSent = result.sent;
     }
 
-    const msg = {
-      to: admin.email,
-      from: process.env.FROM_EMAIL!, // Your verified sender email address
-      subject: "Your New Account Information",
-      html: `
-      <p>Hello ${admin.name},</p>
-      <p>An administrator has created a new account for you on our platform.</p>
-      <p>Your temporary password is: <strong>${tempPassword}</strong></p>
-      <p>Please log in with this password and immediately change it to a password of your choice.</p>
-      <p><a href="${process.env.FRONTEND_URL}/auth">Click here to log in</a></p>
-      <p>Thank you,</p>
-      <p>The Team</p>
-    `,
-    };
+    logger.info(`Admin ${admin.email} created by ${superAdmin.email}`, "ADMINS_POST");
 
-    await sgMail.send(msg);
-    return NextResponse.json(admin);
+    // The account exists either way; the caller is told if the email didn't go
+    // out so they can resend rather than assuming the admin was notified.
+    return NextResponse.json({ ...admin, emailSent }, { status: 201 });
   } catch (error) {
-    console.error("[ADMINS_POST]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    const authzRes = authzErrorResponse(error);
+    if (authzRes) return authzRes;
+    logger.error("Failed to create admin", "ADMINS_POST", error);
+    return NextResponse.json({ error: "Failed to create admin" }, { status: 500 });
   }
 }

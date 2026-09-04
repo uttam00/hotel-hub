@@ -153,10 +153,12 @@ export const adminSchema = z.object({
 });
 
 // Schema for adding hostel admin
+// No password field by design: an invited admin sets their own via a
+// single-use emailed link, so one is never generated, stored or transmitted.
 export const createHostelAdminSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  // password: z.string().min(6, "Password must be at least 6 characters"),
+  hostelIds: z.array(z.string()).optional().default([]),
 });
 
 // Schema for assigning hostels to hostel admin

@@ -11,6 +11,7 @@ import {
   DoorOpen,
   Hourglass,
   LogOut,
+  MailQuestion,
   Minus,
   Plane,
   RotateCcw,
@@ -136,6 +137,23 @@ export const HOSTEL_STATUS: Registry = {
     icon: Clock,
     tone: "warning",
     hint: "Not yet visible to students",
+  },
+};
+
+/** User account lifecycle, shown in super-admin management screens. */
+export const ACCOUNT_STATUS: Registry = {
+  ACTIVE: { label: "Active", icon: CheckCircle2, tone: "success" },
+  PENDING: {
+    label: "Invited",
+    icon: MailQuestion,
+    tone: "warning",
+    hint: "Waiting for them to set a password",
+  },
+  INACTIVE: {
+    label: "Deactivated",
+    icon: Ban,
+    tone: "neutral",
+    hint: "Cannot sign in or access any hostel",
   },
 };
 

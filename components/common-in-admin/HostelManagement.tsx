@@ -71,6 +71,7 @@ export default function HostelManagement({
 }: HostelManagementProps) {
   const isSuperAdmin = userRole === Role.SUPER_ADMIN;
   const router = useRouter();
+  const basePath = isSuperAdmin ? "/super-admin" : "/hostel-admin";
 
   const [selectedHostel, setSelectedHostel] = useState<Hostel | null>(null);
   const [admins, setAdmins] = useState<Array<Pick<HostelAdmin, "id" | "name" | "email">>>([]);
@@ -182,12 +183,13 @@ export default function HostelManagement({
           description={loading ? "Loading…" : `${hostels.length} on record`}
           icon={Building2}
           action={
-            isSuperAdmin ? (
-              <Button size="xs" onClick={() => router.push("/super-admin/hostels/new")}>
-                <Plus className="size-3.5" />
-                Add hostel
-              </Button>
-            ) : undefined
+            // Hostel admins may create their own property too — the API has
+            // always allowed it, but the button was super-admin only, leaving a
+            // self-registered admin with no way to get started.
+            <Button size="xs" onClick={() => router.push(`${basePath}/hostels/new`)}>
+              <Plus className="size-3.5" />
+              Add hostel
+            </Button>
           }
         />
 
@@ -200,10 +202,10 @@ export default function HostelManagement({
             description={
               isSuperAdmin
                 ? "Add a hostel to start onboarding rooms, admins and residents."
-                : "No hostel has been assigned to your account yet."
+                : "Add your property to start managing rooms, residents and payments."
             }
-            actionLabel={isSuperAdmin ? "Add a hostel" : undefined}
-            actionHref={isSuperAdmin ? "/super-admin/hostels/new" : undefined}
+            actionLabel="Add a hostel"
+            actionHref={`${basePath}/hostels/new`}
           />
         ) : (
           <TableScroller maxHeight="calc(100vh - 20rem)">

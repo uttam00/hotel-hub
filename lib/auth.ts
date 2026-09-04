@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import type { DefaultSession, NextAuthOptions } from "next-auth"
 import prisma from "@/lib/prisma"
-import type { Role } from "@prisma/client"
+import type { Role, UserStatus } from "@prisma/client"
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -13,9 +13,21 @@ declare module "next-auth" {
     user: {
       id: string;
       role: Role;
+      status: UserStatus;
+      mustChangePassword: boolean;
     } & DefaultSession["user"];
   }
 }
+
+/**
+ * How long account state may be stale inside a JWT before it is re-read.
+ *
+ * The token lives for days, so deactivating an admin would otherwise have no
+ * effect until it expired. This bounds that window for *middleware* decisions;
+ * API routes never rely on it at all — `requireActiveUser()` reads the database
+ * on every call, so a revoked account loses API access immediately regardless.
+ */
+const ACCOUNT_STATE_TTL_MS = 60_000;
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -46,6 +58,8 @@ export const authOptions: NextAuthOptions = {
             password: true,
             role: true,
             image: true,
+            status: true,
+            mustChangePassword: true,
           },
         });
 
@@ -62,28 +76,72 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid password");
         }
 
+        // Checked after the password so the error can't be used to probe which
+        // accounts exist and are disabled.
+        if (user.status === "INACTIVE") {
+          throw new Error(
+            "This account has been deactivated. Contact your administrator."
+          );
+        }
+
+        // PENDING accounts are allowed through on purpose: they still have to
+        // reach /auth/set-password, and middleware pins them there.
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
           image: user.image,
+          status: user.status,
+          mustChangePassword: user.mustChangePassword,
         } as any;
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any; user: any }) {
+    async jwt({ token, user, trigger }: { token: any; user: any; trigger?: string }) {
       if (user) {
-        token.role = user.role;
         token.id = user.id;
+        token.role = user.role;
+        token.status = user.status ?? "ACTIVE";
+        token.mustChangePassword = user.mustChangePassword ?? false;
+        token.stateCheckedAt = Date.now();
+        return token;
       }
+
+      // Re-read account state periodically, and immediately whenever the client
+      // calls `useSession().update()` — which the set-password flow does, so the
+      // user stops being pinned to the password screen the moment they finish
+      // rather than after the TTL elapses.
+      const stale =
+        Date.now() - (token.stateCheckedAt ?? 0) > ACCOUNT_STATE_TTL_MS;
+
+      if (token.id && (stale || trigger === "update")) {
+        const account = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, status: true, mustChangePassword: true },
+        });
+
+        if (account) {
+          token.role = account.role;
+          token.status = account.status;
+          token.mustChangePassword = account.mustChangePassword;
+        } else {
+          // Account deleted while the session was live — mark it unusable so
+          // middleware stops honouring the token.
+          token.status = "INACTIVE";
+        }
+        token.stateCheckedAt = Date.now();
+      }
+
       return token;
     },
     async session({ session, token }: { session: any; token: any }) {
       if (session?.user) {
-        session.user.role = token.role as Role;
         session.user.id = token.id as string;
+        session.user.role = token.role as Role;
+        session.user.status = (token.status ?? "ACTIVE") as UserStatus;
+        session.user.mustChangePassword = Boolean(token.mustChangePassword);
       }
       return session;
     },

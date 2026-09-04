@@ -53,6 +53,20 @@ model User {
   isVerified           Boolean            @default(false)
   passwordResetToken   String?
   passwordResetExpires DateTime?
+
+  /// Account lifecycle. Defaults to ACTIVE so every existing row keeps working
+  /// after the migration; only invited admins start life as PENDING.
+  status               UserStatus         @default(ACTIVE)
+
+  /// Set when an account is created *for* someone (a super-admin invitation)
+  /// rather than by them. While true, every protected route funnels the user
+  /// to /auth/set-password — enforced in middleware and in the API guards, not
+  /// merely in React state.
+  mustChangePassword   Boolean            @default(false)
+
+  invitedAt            DateTime?
+  onboardingCompletedAt DateTime?
+
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   accounts             Account[]
@@ -66,6 +80,48 @@ model User {
   attendance           Attendance[]
   waitlistEntries      WaitlistEntry[]
   emergencyContacts    EmergencyContact[]
+  inviteTokens         InviteToken[]
+
+  @@index([role, status])
+}
+
+/// A single-use invitation / onboarding link.
+///
+/// Only the SHA-256 hash of the token is stored, so a database leak can't be
+/// turned into a set of working invite links. `usedAt` makes redemption
+/// single-use, and `expiresAt` bounds the window.
+model InviteToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  createdBy String?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Ledger of Stripe events already applied.
+///
+/// Stripe retries webhooks and can deliver the same event more than once. The
+/// event id is the primary key, so a replay hits a unique-constraint violation
+/// and is skipped instead of being applied twice — which previously granted a
+/// free extra subscription period on every duplicate delivery.
+model ProcessedWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+
+  @@index([processedAt])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
 }
 
 model Hostel {

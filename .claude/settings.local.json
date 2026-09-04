@@ -25,7 +25,19 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(curl -s \"http://localhost:3112/_next/static/css/app/layout.css\" -o /tmp/app.css)",
       "Bash(curl -s http://localhost:3112/auth/login)",
-      "Bash(pkill -f \"next dev -p 3112\")"
+      "Bash(pkill -f \"next dev -p 3112\")",
+      "Bash(grep -o \"DATABASE_URL=.\\\\{0,25\\\\}\" .env)",
+      "Bash(sed 's/\\\\\\(:\\\\/\\\\/[^:]*:\\\\\\)[^@]*@/\\\\1***@/')",
+      "Bash(timeout 25 npx prisma db execute --stdin <<< \"SELECT 1;\")",
+      "Bash(timeout 30 npx prisma db execute --schema prisma/schema.prisma --stdin <<< \"SELECT 1;\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(npx prisma *)",
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")",
+      "Bash(echo \"tsc-exit=$?\")",
+      "Bash(npx ts-node *)",
+      "Bash(pkill -f \"next dev -p 3113\")",
+      "Bash(pkill -f \"next dev -p 3114\")",
+      "Bash(pkill -f \"next dev -p 3115\")"
     ]
   }
 }
